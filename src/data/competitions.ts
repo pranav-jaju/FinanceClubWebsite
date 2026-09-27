@@ -122,7 +122,7 @@ export const competitions: Competition[] = [
 
     status: "active",
 
-    registrationDeadline: "2026-09-26",
+    registrationDeadline: "2026-10-15",
 
     submissionDeadline: "2026-04-15",
 
