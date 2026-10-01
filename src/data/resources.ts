@@ -28,15 +28,6 @@ export const resources: Resource[] = [
     date: "2025-12-10",
   },
   {
-    id: "4",
-    title: "ERC 2025 Winning Submission",
-    description: "Award-winning equity research report from last year's Equity Research Challenge competition.",
-    type: "submission",
-    category: "Winning Submissions",
-    url: "https://drive.google.com/drive/folders/1PNqnspprRyHPsCdAY_WQB2wceEoRtZ6H?usp=sharing",
-    date: "2025-11-01",
-  },
-  {
     id: "10",
     title: "PMC 2025 Winning Submissions",
     description: "Top 3 Consolidated Portfolio reports from last year's Portfolio Management Competition.",
