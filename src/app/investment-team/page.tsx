@@ -11,6 +11,7 @@ import {
   Briefcase,
   Target,
 } from "lucide-react";
+import RevealWords from "@/components/motion/RevealWords";
 
 export const metadata: Metadata = {
   title: "Investment Team",
@@ -92,7 +93,7 @@ export default function InvestmentTeamPage() {
         <div className="accent-orb-crimson top-0 right-[10%]" />
         <div className="accent-orb-gold bottom-0 left-[20%]" />
         <div className="relative z-10 max-w-4xl mx-auto">
-          <div className="badge-pill badge-crimson mb-6">
+          <div className="badge-pill badge-gold mb-6">
             <TrendingUp className="w-3 h-3" />
             Investment Team
           </div>
@@ -101,7 +102,7 @@ export default function InvestmentTeamPage() {
             style={{ fontFamily: "var(--font-display)" }}
           >
             Student-Run{" "}
-            <span className="text-gradient-crimson">Investment Initiative</span>
+            <span className="text-gradient-gold">Investment Initiative</span>
           </h1>
           <p className="text-lg text-cream/35 max-w-2xl leading-relaxed">
             A student-driven investment initiative at IIT Bombay, running
@@ -118,10 +119,11 @@ export default function InvestmentTeamPage() {
         <div className="max-w-4xl mx-auto">
           <div className="card-glow-gold p-8 sm:p-12">
             <h2
-              className="text-2xl font-extrabold text-gradient-gold mb-6"
+              className="text-2xl font-extrabold mb-6"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              About the Team
+              <RevealWords text="About the Team" className="text-gradient-gold" />
+              {" "}
             </h2>
             <div className="space-y-4 text-cream/35 leading-relaxed">
               <p>
@@ -153,7 +155,7 @@ export default function InvestmentTeamPage() {
       <section className="py-24 px-6 lg:px-8 mesh-crimson grain">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <div className="badge-pill badge-crimson mx-auto mb-6">
+            <div className="badge-pill badge-gold mx-auto mb-6">
               <Target className="w-3 h-3" />
               Divisions
             </div>
@@ -161,8 +163,10 @@ export default function InvestmentTeamPage() {
               className="text-3xl sm:text-4xl font-extrabold tracking-tight"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Work{" "}
-              <span className="text-gradient-crimson">Highlights</span>
+              <RevealWords text="Work" />
+              {" "}
+              <RevealWords text="Highlights" className="text-gradient-gold" delay={0.07} />
+              {" "}
             </h2>
           </div>
 
@@ -232,8 +236,10 @@ export default function InvestmentTeamPage() {
               className="text-3xl sm:text-4xl font-extrabold tracking-tight"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Published{" "}
-              <span className="text-gradient-gold">Analysis</span>
+              <RevealWords text="Published" />
+              {" "}
+              <RevealWords text="Analysis" className="text-gradient-gold" delay={0.07} />
+              {" "}
             </h2>
             <p className="text-cream/25 mt-4 max-w-lg mx-auto">
               Original articles published by team members on Medium.
@@ -271,7 +277,7 @@ export default function InvestmentTeamPage() {
       <section className="py-24 px-6 lg:px-8 mesh-crimson grain">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-14">
-            <div className="badge-pill badge-crimson mx-auto mb-6">
+            <div className="badge-pill badge-gold mx-auto mb-6">
               <FileText className="w-3 h-3" />
               Reports
             </div>
@@ -279,8 +285,10 @@ export default function InvestmentTeamPage() {
               className="text-3xl sm:text-4xl font-extrabold tracking-tight"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Research{" "}
-              <span className="text-gradient-crimson">Publications</span>
+              <RevealWords text="Research" />
+              {" "}
+              <RevealWords text="Publications" className="text-gradient-gold" delay={0.07} />
+              {" "}
             </h2>
             <p className="text-cream/25 mt-4 max-w-lg mx-auto">
               Downloadable research reports and strategy papers.
@@ -327,8 +335,11 @@ export default function InvestmentTeamPage() {
               className="text-3xl font-extrabold mb-4"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Interested in{" "}
-              <span className="text-gradient-gold">Joining</span>?
+              <RevealWords text="Interested in" />
+              {" "}
+              <RevealWords text="Joining" className="text-gradient-gold" delay={0.14} />
+              <RevealWords text="?" delay={0.21} />
+              {" "}
             </h2>
             <p className="text-cream/25 max-w-md mx-auto mb-8 leading-relaxed">
               Applications for the Investment Team open during recruitment

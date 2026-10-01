@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { teamMembers } from "@/data/team";
 import ManagerCard from "@/components/ManagerCard";
 
@@ -12,7 +12,20 @@ export default function ConvenerCarousel({ conveners }: { conveners: typeof team
   const rafRef = useRef<number | null>(null);
 
   const n = conveners.length;
-  const radius = 300;
+  // Shrink the ring on narrow screens so the front card stays centred and
+  // side cards don't spill off-screen on phones.
+  const sceneRef = useRef<HTMLDivElement | null>(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const el = sceneRef.current;
+    if (!el) return;
+    const update = () => setScale(Math.min(1, el.clientWidth / 640));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const radius = 300 * Math.max(scale, 0.6);
   const angleStep = 360 / n;
 
   useEffect(() => {
@@ -53,10 +66,14 @@ export default function ConvenerCarousel({ conveners }: { conveners: typeof team
 
   return (
     <div
-      className="carousel-3d-scene relative w-full h-[480px] flex items-center justify-center"
+      ref={sceneRef}
+      className="carousel-3d-scene relative w-full h-[400px] sm:h-[480px] flex items-center justify-center"
+      onTouchStart={() => { isPausedRef.current = true; }}
+      onTouchEnd={() => { isPausedRef.current = false; }}
       onMouseEnter={() => { isPausedRef.current = true; }}
       onMouseLeave={() => { isPausedRef.current = false; }}
     >
+      <div style={{ transform: `scale(${Math.max(scale, 0.78)})` }} className="carousel-3d-scene">
       <div ref={ringRef} className="carousel-3d-ring">
         {conveners.map((m, i) => {
           const angle = i * angleStep;
@@ -77,6 +94,7 @@ export default function ConvenerCarousel({ conveners }: { conveners: typeof team
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

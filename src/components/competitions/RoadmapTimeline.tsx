@@ -1,20 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { WheelEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import {
   motion,
   useMotionValue,
-  animate,
+  useMotionValueEvent,
+  useScroll,
+  useSpring,
   type MotionValue,
 } from "framer-motion";
-import type { PanInfo } from "framer-motion";
 import Link from "next/link";
 import { Maximize2, X } from "lucide-react";
 import { ArrowRight } from "lucide-react";
+import ScrollReveal from "@/components/ScrollReveal";
 import { competitions, type Competition } from "@/data/competitions";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const M: any = motion.div;
+
+const useIsoLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /* ============================================================
    DATE / STATUS HELPERS — always derived live against today,
@@ -119,53 +125,17 @@ function buildSmoothPath(points: Pt[], leadIn: Pt, leadOut: Pt, tension = 6) {
 }
 
 /* ============================================================
-   AUTO-SCROLL — slow continuous scroll that loops once it hits
-   the end, pauses on hover / drag.
-   ============================================================ */
-
-function useAutoScrollLoop(
-  x: MotionValue<number>,
-  containerRef: React.RefObject<HTMLDivElement | null>,
-  trackRef: React.RefObject<HTMLDivElement | null>,
-  opts: { enabled: boolean; speed: number }
-) {
-  const pausedRef = useRef(false);
-
-  useEffect(() => {
-    let rafId: number;
-    const step = () => {
-      if (opts.enabled && !pausedRef.current) {
-        const container = containerRef.current;
-        const track = trackRef.current;
-        if (container && track) {
-          const viewportW = container.clientWidth;
-          const minX = Math.min(0, viewportW - track.scrollWidth);
-          const cur = x.get();
-          let next = cur - opts.speed;
-          if (next <= minX) next = 0;
-          x.set(next);
-        }
-      }
-      rafId = requestAnimationFrame(step);
-    };
-    rafId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(rafId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opts.enabled, opts.speed]);
-
-  return pausedRef;
-}
-
-/* ============================================================
    MILESTONE CARD
    ============================================================ */
 
 function MilestoneCard({
   c,
   size = "default",
+  highlight = false,
 }: {
   c: Competition;
   size?: "default" | "expanded";
+  highlight?: boolean;
 }) {
   const state = getCompetitionState(c);
   const expanded = size === "expanded";
@@ -183,6 +153,7 @@ function MilestoneCard({
     minWidth: expanded ? 140 : 260,
     maxWidth: expanded ? 140 : 260,
     padding: expanded ? 8 : undefined,
+    borderColor: highlight ? "rgba(245,183,49,0.45)" : undefined,
   }}
 >
         <div
@@ -233,65 +204,38 @@ function MilestoneCard({
   );
 }
 
-const PaperTexture = () => (
-  <div
-    className="absolute inset-0 pointer-events-none"
-    style={{
-      backgroundImage: "url('/Finance-Club/roadmapbg.JPG')",
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      opacity: 0.18,
-      filter: "grayscale(60%) brightness(0.9) contrast(1.1)",
-      mixBlendMode: "lighten",
-    }}
-  />
+const PaperTexture = ({ watermarkSize = "min(62%, 320px)" }: { watermarkSize?: string }) => (
+  <>
+    <div
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        backgroundImage: "url('/Finance-Club/roadmapbg.JPG')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        opacity: 0.18,
+        filter: "grayscale(60%) brightness(0.9) contrast(1.1)",
+        mixBlendMode: "lighten",
+      }}
+    />
+    {/* Faint Finance Club watermark pressed into the paper. `screen` drops
+        the logo's dark background so only the mark shows through. */}
+    <div
+      aria-hidden
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        backgroundImage: "url('/Finance-Club/logo.jpg')",
+        backgroundSize: `${watermarkSize} auto`,
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        opacity: 0.1,
+        filter: "grayscale(35%) contrast(1.15)",
+        mixBlendMode: "screen",
+        maskImage: "radial-gradient(closest-side, black 55%, transparent 100%)",
+        WebkitMaskImage: "radial-gradient(closest-side, black 55%, transparent 100%)",
+      }}
+    />
+  </>
 );
-
-function RoadSVG({
-  d,
-  width,
-  height,
-}: {
-  d: string;
-  width: number;
-  height: number;
-}) {
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      width={width}
-      height={height}
-      className="block"
-      preserveAspectRatio="xMidYMid meet"
-    >
-      <path
-        d={d}
-        stroke="#0b0b0b"
-        strokeWidth={34}
-        strokeLinecap="round"
-        fill="none"
-        className="road-path"
-      />
-      <path
-        d={d}
-        stroke="#2A8F5C"
-        strokeWidth={44}
-        strokeOpacity={0.06}
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path
-        d={d}
-        stroke="#F5B731"
-        strokeWidth={4}
-        strokeDasharray="18 12"
-        strokeLinecap="round"
-        fill="none"
-        className="road-flow"
-      />
-    </svg>
-  );
-}
 
 /* ============================================================
    EXPANDED ROAD — cards are laid out with real CSS (flex-wrap),
@@ -444,41 +388,552 @@ function ExpandedRoadmap({ items }: { items: Competition[] }) {
   );
 }
 
+
 /* ============================================================
-   MAIN COMPONENT
+   ROAD SAMPLING — the road is a real SVG path, so we sample it
+   once and look points up by x (horizontal) or by length
+   (vertical). This keeps the lit road + marker glued to the
+   actual curve instead of approximating it.
    ============================================================ */
 
-export default function RoadmapTimeline() {
-  // All competitions, no sessions/workshops, sorted strictly by
-  // registration date (real Date objects, not string/month
-  // matching) so the road always runs earliest → latest.
+type Sampler = { total: number; step: number; xs: Float32Array; ys: Float32Array };
+
+function samplePath(path: SVGPathElement, step = 3): Sampler {
+  const total = path.getTotalLength();
+  const n = Math.max(2, Math.ceil(total / step) + 1);
+  const xs = new Float32Array(n);
+  const ys = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const p = path.getPointAtLength(Math.min(i * step, total));
+    xs[i] = p.x;
+    ys[i] = p.y;
+  }
+  return { total, step, xs, ys };
+}
+
+// The wave road always moves left → right, so x is monotonic along it.
+function indexAtX(s: Sampler, x: number) {
+  let lo = 0;
+  let hi = s.xs.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (s.xs[mid] < x) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+
+// Where "today" falls between milestones, as a fractional index
+// (e.g. 3.4 = 40% of the way from milestone 3 to milestone 4).
+function todayIndex(items: Competition[]): number {
+  const now = Date.now();
+  const ts = items.map((c) => new Date(c.registrationDeadline).getTime());
+  if (!ts.length) return 0;
+  if (now <= ts[0]) return -0.5;
+  if (now >= ts[ts.length - 1]) return ts.length - 0.5;
+  for (let i = 0; i < ts.length - 1; i++) {
+    if (now >= ts[i] && now < ts[i + 1]) {
+      const span = ts[i + 1] - ts[i];
+      return i + (span > 0 ? (now - ts[i]) / span : 0.5);
+    }
+  }
+  return 0;
+}
+
+const TRACK_HEIGHT = 380;
+const PAD = 220;
+
+function roadGeometry(count: number) {
+  const width = Math.max(2400, count * 320 + 500);
+  const points = buildWavePoints(count, width, TRACK_HEIGHT, PAD, TRACK_HEIGHT * 0.28);
+  const d = buildSmoothPath(
+    points,
+    { x: (points[0]?.x ?? 0) - 160, y: TRACK_HEIGHT / 2 },
+    { x: (points[points.length - 1]?.x ?? 0) + 160, y: TRACK_HEIGHT / 2 }
+  );
+  const seg = points.length > 1 ? points[1].x - points[0].x : 0;
+  const span = points.length > 1 ? points[points.length - 1].x - points[0].x : 0;
+  return { width, points, d, seg, span };
+}
+
+// Scroll progress → travel progress, with a short dwell at both
+// ends so the first and last stops get a moment on screen.
+const DWELL = 0.06;
+const travelOf = (p: number) => clamp01((p - DWELL) / (1 - DWELL * 2));
+
+/* ============================================================
+   HORIZONTAL ROAD (tablet / desktop) — page scroll drives the
+   journey. Pinned on large screens, scrubbed in place otherwise.
+   ============================================================ */
+
+function HorizontalRoad({
+  items,
+  progress,
+  onExpand,
+  onStep,
+}: {
+  items: Competition[];
+  progress: MotionValue<number>;
+  onExpand: () => void;
+  onStep: (dir: 1 | -1) => void;
+}) {
+  const geo = roadGeometry(items.length);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const pathRef = useRef<SVGPathElement | null>(null);
+  const litRef = useRef<SVGPathElement | null>(null);
+  const markerRef = useRef<SVGGElement | null>(null);
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const samplerRef = useRef<Sampler | null>(null);
+  const placedRef = useRef(false);
+
+  const [cw, setCw] = useState(0);
+  const [active, setActive] = useState(0);
+
+  const target = useMotionValue(0);
+  const x = useSpring(target, { stiffness: 170, damping: 34, mass: 0.6 });
+
+  // Depends on the current time, so compute it client-side only
+  // (avoids a server/client hydration mismatch).
+  const [todayX, setTodayX] = useState<number | null>(null);
+  useEffect(() => {
+    setTodayX((geo.points[0]?.x ?? 0) + todayIndex(items) * geo.seg);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length, geo.seg]);
+
+  const toX = (p: number) => cw / 2 - (geo.points[0]?.x ?? 0) - geo.span * travelOf(p);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => setCw(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const paint = (v: number) => {
+    const s = samplerRef.current;
+    if (!s || !cw) return;
+    const cx = cw / 2 - v;
+    const i = indexAtX(s, cx);
+    const L = Math.min(i * s.step, s.total);
+    if (litRef.current) litRef.current.style.strokeDashoffset = String(s.total - L);
+    markerRef.current?.setAttribute("transform", `translate(${s.xs[i]} ${s.ys[i]})`);
+    const idx = geo.seg
+      ? Math.max(0, Math.min(items.length - 1, Math.round((cx - geo.points[0].x) / geo.seg)))
+      : 0;
+    setActive((prev) => (prev === idx ? prev : idx));
+  };
+
+  useIsoLayoutEffect(() => {
+    const path = pathRef.current;
+    if (!path) return;
+    const s = samplePath(path);
+    samplerRef.current = s;
+    if (litRef.current) {
+      litRef.current.style.strokeDasharray = String(s.total);
+      litRef.current.style.strokeDashoffset = String(s.total);
+    }
+  }, [geo.d]);
+
+  // Place the road for the current scroll position once we know the width.
+  useEffect(() => {
+    if (!cw) return;
+    const v = toX(progress.get());
+    target.set(v);
+    if (!placedRef.current) {
+      x.jump(v);
+      placedRef.current = true;
+    }
+    paint(x.get());
+    if (barRef.current) barRef.current.style.transform = `scaleX(${travelOf(progress.get())})`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cw]);
+
+  useMotionValueEvent(progress, "change", (p) => {
+    if (!cw) return;
+    target.set(toX(p));
+    if (barRef.current) barRef.current.style.transform = `scaleX(${travelOf(p)})`;
+  });
+  useMotionValueEvent(x, "change", paint);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full h-[420px] lg:h-[520px] overflow-hidden roadmap-wrapper rounded-xl outline-none focus-visible:ring-1 focus-visible:ring-gold/40"
+      tabIndex={0}
+      aria-label="Competition roadmap. Scroll the page or use the arrow keys to travel along it."
+      onKeyDown={(e) => {
+        if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+          e.preventDefault();
+          onStep(e.key === "ArrowRight" ? 1 : -1);
+        }
+      }}
+    >
+      <PaperTexture />
+
+      <button
+        onClick={onExpand}
+        className="absolute top-3 right-3 z-40 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 border border-gold/15 text-cream/60 text-xs hover:text-gold hover:border-gold/30 transition-colors"
+        aria-label="Expand roadmap"
+      >
+        <Maximize2 className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">View Full Roadmap</span>
+      </button>
+
+      <M className="absolute left-0 top-0 h-full" style={{ x, width: geo.width }}>
+        {/* Today line — behind the cards, label in the free band below the road */}
+        {todayX !== null && (
+          <>
+            <div
+              className="absolute top-0 pointer-events-none"
+              style={{ left: todayX, height: TRACK_HEIGHT + 18 }}
+              aria-hidden
+            >
+              <div className="w-px h-full bg-gradient-to-b from-transparent via-gold/45 to-gold/80" />
+            </div>
+            <div
+              className="absolute -translate-x-1/2 pointer-events-none z-20"
+              style={{ left: todayX, top: TRACK_HEIGHT + 18 }}
+            >
+              <span className="inline-block px-3 py-1 rounded-full bg-gold text-[#0D0A0A] text-[11px] font-bold uppercase tracking-[0.18em] shadow-[0_0_24px_rgba(245,183,49,0.35)] whitespace-nowrap">
+                You are here
+              </span>
+            </div>
+          </>
+        )}
+
+        <svg
+          viewBox={`0 0 ${geo.width} ${TRACK_HEIGHT}`}
+          width={geo.width}
+          height={TRACK_HEIGHT}
+          className="block relative overflow-visible"
+        >
+          <path ref={pathRef} d={geo.d} stroke="#0b0b0b" strokeWidth={34} strokeLinecap="round" fill="none" className="road-path" />
+          <path d={geo.d} stroke="#2A8F5C" strokeWidth={44} strokeOpacity={0.06} strokeLinecap="round" fill="none" />
+          <path d={geo.d} stroke="#F5B731" strokeWidth={4} strokeDasharray="18 12" strokeLinecap="round" fill="none" className="road-flow" />
+          {/* The stretch you've already travelled lights up */}
+          <path
+            ref={litRef}
+            d={geo.d}
+            stroke="#FDD85D"
+            strokeWidth={5}
+            strokeLinecap="round"
+            fill="none"
+            style={{ filter: "drop-shadow(0 0 6px rgba(245,183,49,0.75))" }}
+          />
+          <g ref={markerRef}>
+            <circle r={18} fill="rgba(245,183,49,0.14)" />
+            <circle r={7.5} fill="#FDD85D" stroke="#0b0b0b" strokeWidth={2.5} />
+          </g>
+        </svg>
+
+        {items.map((c, i) => {
+          const pos = geo.points[i];
+          const state = getCompetitionState(c);
+          const isActive = i === active;
+          return (
+            <div
+              key={c.slug}
+              style={{ position: "absolute", left: pos.x, top: pos.y }}
+              className={`-translate-x-1/2 -translate-y-1/2 milestone ${isActive ? "z-30" : "z-10"}`}
+            >
+              <div
+                className={`transition-[opacity,transform,filter] duration-500 ease-out ${
+                  isActive
+                    ? "opacity-100 scale-[1.06] drop-shadow-[0_0_28px_rgba(245,183,49,0.22)]"
+                    : state.tone === "closed"
+                    ? "opacity-50 scale-95"
+                    : "opacity-80 scale-95"
+                }`}
+              >
+                <MilestoneCard c={c} highlight={isActive} />
+              </div>
+            </div>
+          );
+        })}
+      </M>
+
+      <div className="absolute bottom-3 left-3 z-40 pointer-events-none">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 border border-gold/10 text-cream/60 text-xs">
+          <span>Scroll to travel the year</span>
+          <span className="text-gold/80 tabular-nums">
+            {String(active + 1).padStart(2, "0")} / {String(items.length).padStart(2, "0")}
+          </span>
+        </div>
+      </div>
+
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-cream/5 z-40">
+        <div
+          ref={barRef}
+          className="h-full bg-gradient-to-r from-gold-dark via-gold to-gold-light origin-left"
+          style={{ transform: "scaleX(0)" }}
+        />
+      </div>
+
+      <div className="road-fade-left pointer-events-none" aria-hidden={true} />
+      <div className="road-fade-right pointer-events-none" aria-hidden={true} />
+    </div>
+  );
+}
+
+/* ============================================================
+   VERTICAL ROAD (phones) — a road that winds down the screen
+   between the cards and lights up as you scroll with your thumb.
+   ============================================================ */
+
+type Row = { kind: "comp"; c: Competition; i: number } | { kind: "today" };
+
+function VerticalRoad({ items }: { items: Competition[] }) {
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const nodeRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const pathRef = useRef<SVGPathElement | null>(null);
+  const litRef = useRef<SVGPathElement | null>(null);
+  const markerRef = useRef<SVGGElement | null>(null);
+  const samplerRef = useRef<Sampler | null>(null);
+  const nodeYs = useRef<number[]>([]);
+
+  const [geo, setGeo] = useState<{ d: string; w: number; h: number } | null>(null);
+  const [active, setActive] = useState(-1);
+
+  // Insert a "today" stop between the last closed and first upcoming.
+  const now = Date.now();
+  const rows: Row[] = [];
+  let todayPlaced = false;
+  items.forEach((c, i) => {
+    if (!todayPlaced && new Date(c.registrationDeadline).getTime() > now) {
+      rows.push({ kind: "today" });
+      todayPlaced = true;
+    }
+    rows.push({ kind: "comp", c, i });
+  });
+  if (!todayPlaced) rows.push({ kind: "today" });
+
+  const { scrollYProgress } = useScroll({
+    target: wrapRef,
+    offset: ["start 0.7", "end 0.6"],
+  });
+  const progress = useSpring(scrollYProgress, { stiffness: 220, damping: 40, mass: 0.4 });
+
+  useIsoLayoutEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const measure = () => {
+      const wr = wrap.getBoundingClientRect();
+      const pts: Pt[] = [];
+      nodeRefs.current.slice(0, rows.length).forEach((el) => {
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        pts.push({ x: r.left - wr.left + r.width / 2, y: r.top - wr.top + r.height / 2 });
+      });
+      if (pts.length < 2) return;
+      nodeYs.current = pts.map((p) => p.y);
+      const d = buildSmoothPath(
+        pts,
+        { x: pts[0].x, y: Math.max(0, pts[0].y - 70) },
+        { x: pts[pts.length - 1].x, y: pts[pts.length - 1].y + 70 },
+        5
+      );
+      setGeo((prev) =>
+        prev && prev.d === d && prev.w === wr.width ? prev : { d, w: wr.width, h: wrap.scrollHeight }
+      );
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrap);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows.length]);
+
+  const paint = (v: number) => {
+    const s = samplerRef.current;
+    if (!s) return;
+    const L = clamp01(v) * s.total;
+    const i = Math.min(s.xs.length - 1, Math.round(L / s.step));
+    if (litRef.current) litRef.current.style.strokeDashoffset = String(s.total - L);
+    markerRef.current?.setAttribute("transform", `translate(${s.xs[i]} ${s.ys[i]})`);
+    // Highlight the stop the marker is closest to.
+    const my = s.ys[i];
+    let best = -1;
+    let bestD = Infinity;
+    nodeYs.current.forEach((y, k) => {
+      if (rows[k]?.kind !== "comp") return;
+      const dist = Math.abs(y - my);
+      if (dist < bestD) {
+        bestD = dist;
+        best = k;
+      }
+    });
+    setActive((prev) => (prev === best ? prev : best));
+  };
+
+  useIsoLayoutEffect(() => {
+    const path = pathRef.current;
+    if (!path || !geo) return;
+    const s = samplePath(path, 2);
+    samplerRef.current = s;
+    if (litRef.current) litRef.current.style.strokeDasharray = String(s.total);
+    paint(progress.get());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo?.d]);
+
+  useMotionValueEvent(progress, "change", paint);
+
+  let compCount = 0;
+
+  return (
+    <div ref={wrapRef} className="relative py-8 overflow-hidden rounded-xl">
+      <PaperTexture />
+
+      {geo && (
+        <svg
+          className="absolute left-0 top-0 pointer-events-none"
+          width={geo.w}
+          height={geo.h}
+          viewBox={`0 0 ${geo.w} ${geo.h}`}
+          aria-hidden
+        >
+          <path ref={pathRef} d={geo.d} stroke="#0b0b0b" strokeWidth={26} strokeLinecap="round" fill="none" />
+          <path d={geo.d} stroke="#2A8F5C" strokeWidth={34} strokeOpacity={0.07} strokeLinecap="round" fill="none" />
+          <path d={geo.d} stroke="#F5B731" strokeWidth={3} strokeDasharray="12 9" strokeLinecap="round" fill="none" opacity={0.7} />
+          <path
+            ref={litRef}
+            d={geo.d}
+            stroke="#FDD85D"
+            strokeWidth={4}
+            strokeLinecap="round"
+            fill="none"
+            style={{ filter: "drop-shadow(0 0 5px rgba(245,183,49,0.75))" }}
+          />
+          <g ref={markerRef}>
+            <circle r={14} fill="rgba(245,183,49,0.16)" />
+            <circle r={6} fill="#FDD85D" stroke="#0b0b0b" strokeWidth={2} />
+          </g>
+        </svg>
+      )}
+
+      <div className="relative space-y-12 px-1">
+        {rows.map((row, k) => {
+          if (row.kind === "today") {
+            return (
+              <div key="today" className="flex justify-center">
+                <div
+                  ref={(el) => {
+                    nodeRefs.current[k] = el;
+                  }}
+                  className="px-3.5 py-1.5 rounded-full bg-gold text-[#0D0A0A] text-[11px] font-bold uppercase tracking-[0.18em] shadow-[0_0_24px_rgba(245,183,49,0.4)]"
+                >
+                  You are here ·{" "}
+                  {new Date(now).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                </div>
+              </div>
+            );
+          }
+
+          const { c } = row;
+          const state = getCompetitionState(c);
+          const isActive = active === k;
+          const side = compCount++ % 2 === 0 ? "mr-auto" : "ml-auto";
+
+          return (
+            <div key={c.slug} className={`w-[86%] ${side}`}>
+              <div
+                ref={(el) => {
+                  nodeRefs.current[k] = el;
+                }}
+              >
+                <Link href={`/competitions/${c.slug}`} className="block">
+                  <div
+                    className={`rounded-xl p-4 border bg-[#0D0A0A]/92 backdrop-blur-md transition-all duration-500 active:scale-[0.98] ${
+                      isActive
+                        ? "border-gold/45 shadow-[0_0_32px_-8px_rgba(245,183,49,0.35)]"
+                        : state.tone === "closed"
+                        ? "border-cream/10 opacity-60"
+                        : "border-cream/10"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-gold">
+                        {formatMonthYear(c.registrationDeadline)}
+                      </span>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                          state.tone === "closed"
+                            ? "border-cream/10 text-cream/40"
+                            : "border-gold/30 text-gold bg-gold/10"
+                        }`}
+                      >
+                        {state.label}
+                      </span>
+                    </div>
+                    <div className="text-lg font-bold text-cream mt-2 leading-snug">{c.name}</div>
+                    <p className="text-base text-cream/55 mt-1 line-clamp-2 leading-relaxed">
+                      {c.shortDescription}
+                    </p>
+                    <div className="mt-3 flex items-center text-xs text-gold font-medium gap-1">
+                      <span>View Details</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   MAIN — the whole "Compete Against the Best Minds" block.
+   `intro` is the left-hand text column from the homepage.
+   ============================================================ */
+
+type Mode = "pinned" | "inline" | "vertical";
+
+export default function RoadmapTimeline({ intro }: { intro: ReactNode }) {
+  // All competitions sorted strictly by registration date so the
+  // road always runs earliest → latest.
   const items = [...competitions].sort(
     (a, b) =>
       new Date(a.registrationDeadline).getTime() -
       new Date(b.registrationDeadline).getTime()
   );
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const x = useMotionValue(0);
-  const [isMobile, setIsMobile] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const milestoneRefs = useRef<HTMLDivElement[]>([]);
-  const [targets, setTargets] = useState<number[]>([]);
-  const [mounted, setMounted] = useState(false);
+  const sectionRef = useRef<HTMLDivElement | null>(null);
+  const [mode, setMode] = useState<Mode>("inline");
   const [isExpanded, setIsExpanded] = useState(false);
-  const initialCentered = useRef(false);
+
+  // How much page scroll the pinned journey takes: ~0.85px of
+  // scroll per px of road, so it feels 1:1 without dragging on.
+  const scrollDistance = Math.round(roadGeometry(items.length).span * 0.85);
+
+  const { scrollYProgress: pinnedProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end end"],
+  });
+  const { scrollYProgress: inlineProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start 0.85", "end 0.15"],
+  });
 
   useEffect(() => {
-    setMounted(true);
+    const decide = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      setMode(w < 768 ? "vertical" : w >= 1024 && h >= 700 ? "pinned" : "inline");
+    };
+    decide();
+    window.addEventListener("resize", decide);
+    return () => window.removeEventListener("resize", decide);
   }, []);
 
   useEffect(() => {
-    if (isExpanded) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = isExpanded ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
@@ -492,254 +947,53 @@ export default function RoadmapTimeline() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+  // Arrow keys jump one stop by scrolling the page the matching amount.
+  const step = (dir: 1 | -1) => {
+    const per =
+      mode === "pinned"
+        ? (scrollDistance * (1 - DWELL * 2)) / Math.max(1, items.length - 1)
+        : window.innerHeight / Math.max(1, items.length - 1);
+    window.scrollBy({ top: dir * per, behavior: "smooth" });
+  };
 
-  const clamp = (v: number, a: number, b: number) =>
-    Math.max(a, Math.min(b, v));
+  const pinned = mode === "pinned";
 
-  function computeTargets() {
-    const container = containerRef.current;
-    const track = trackRef.current;
-    if (!container || !track) return;
-    const viewportW = container.clientWidth;
-    const minX = Math.min(0, viewportW - track.scrollWidth);
-    const centers = items.map((_, i) => {
-      const el = milestoneRefs.current[i];
-      if (!el) return 0;
-      const elRect = el.getBoundingClientRect();
-      const trackRect = track.getBoundingClientRect();
-      return elRect.left - trackRect.left + elRect.width / 2;
-    });
-    const newTargets = centers.map((c) => clamp(viewportW / 2 - c, minX, 0));
-    setTargets(newTargets);
-
-    if (!initialCentered.current && newTargets.length) {
-      x.set(newTargets[0]);
-      initialCentered.current = true;
-    } else {
-      const cur = x.get();
-      const clamped = clamp(cur, minX, 0);
-      if (clamped !== cur) x.set(clamped);
-    }
-  }
-
-  useEffect(() => {
-    const onResize = () => computeTargets();
-    window.addEventListener("resize", onResize);
-    const t = setTimeout(computeTargets, 120);
-    return () => {
-      window.removeEventListener("resize", onResize);
-      clearTimeout(t);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /* ---------- compact geometry ---------- */
-  const TRACK_HEIGHT = 380;
-  const TRACK_WIDTH = Math.max(2400, items.length * 320 + 500);
-  const PAD = 220;
-  const AMP = TRACK_HEIGHT * 0.28;
-  const points = buildWavePoints(items.length, TRACK_WIDTH, TRACK_HEIGHT, PAD, AMP);
-  const roadD = buildSmoothPath(
-    points,
-    { x: (points[0]?.x ?? 0) - 160, y: TRACK_HEIGHT / 2 },
-    { x: (points[points.length - 1]?.x ?? 0) + 160, y: TRACK_HEIGHT / 2 }
-  );
-
-  /* ---------- autoscroll (bumped up a bit) ---------- */
-  const pausedCompact = useAutoScrollLoop(x, containerRef, trackRef, {
-    enabled: mounted && !isMobile && !isExpanded,
-    speed: 2,
-  });
-
-  /* ---------- mobile vertical timeline ---------- */
-  if (isMobile) {
-    return (
-      <div className="relative pl-6 space-y-6">
-        <div className="absolute left-2.5 top-3 bottom-3 w-0.5 bg-gradient-to-b from-gold/50 via-gold/20 to-transparent" />
-        {items.map((c) => {
-          const state = getCompetitionState(c);
-          return (
-            <div key={c.slug} className="relative group">
-              <div
-                className={`absolute -left-[1.95rem] top-4 w-3 h-3 rounded-full border-2 ${
-                  state.tone === "live"
-                    ? "bg-gold border-gold shadow-[0_0_8px_#f5b731]"
-                    : "bg-[#141010] border-cream/30"
-                }`}
-              />
-              <Link href={`/competitions/${c.slug}`} className="block">
-                <div className="backdrop-blur-md bg-black/40 border border-cream/10 rounded-xl p-4 transition-all active:scale-[0.98]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-gold">
-                      {formatMonthYear(c.registrationDeadline)}
-                    </span>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full border ${
-                        state.tone === "live"
-                          ? "border-gold/40 text-gold bg-gold/10"
-                          : state.tone === "closed"
-                          ? "border-cream/10 text-cream/25"
-                          : "border-cream/10 text-cream/40"
-                      }`}
-                    >
-                      {state.label}
-                    </span>
-                  </div>
-                  <div className="text-xl font-bold text-cream mt-2">
-                    {c.name}
-                  </div>
-                  <p className="text-lg text-cream/50 mt-1 line-clamp-2 leading-relaxed">
-                    {c.shortDescription}
-                  </p>
-                  <div className="mt-3 flex items-center text-xs text-gold font-medium gap-1">
-                    <span>View Details</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </div>
-                </div>
-              </Link>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  /* ---------- desktop view ---------- */
   return (
     <>
       <div
-        ref={containerRef}
-        className="relative w-full h-[520px] overflow-hidden roadmap-wrapper"
-        tabIndex={0}
-        onMouseEnter={() => (pausedCompact.current = true)}
-        onMouseLeave={() => (pausedCompact.current = false)}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-            e.preventDefault();
-            const cur = x.get();
-            let idx = 0;
-            if (targets.length) {
-              let best = 0;
-              let bestDist = Infinity;
-              targets.forEach((t, i) => {
-                const d = Math.abs(t - cur);
-                if (d < bestDist) {
-                  bestDist = d;
-                  best = i;
-                }
-              });
-              idx = best;
-            }
-            const next =
-              e.key === "ArrowLeft"
-                ? Math.max(0, idx - 1)
-                : Math.min(items.length - 1, idx + 1);
-            if (targets[next] !== undefined)
-              animate(x, targets[next], {
-                type: "spring",
-                stiffness: 300,
-                damping: 28,
-              });
-          }
-        }}
-        style={{ cursor: isDragging ? "grabbing" : "grab" }}
+        ref={sectionRef}
+        className="relative"
+        style={pinned ? { height: `calc(100vh + ${scrollDistance}px)` } : undefined}
       >
-        <PaperTexture />
-
-        <button
-          onClick={() => setIsExpanded(true)}
-          className="absolute top-3 right-3 z-40 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 border border-gold/15 text-cream/60 text-xs hover:text-gold hover:border-gold/30 transition-colors"
-          aria-label="Expand roadmap"
+        <div
+          className={pinned ? "sticky top-0 h-screen flex items-center" : ""}
+          style={pinned ? { paddingTop: "var(--navbar-height, 80px)" } : undefined}
         >
-          <Maximize2 className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">View Full Roadmap</span>
-        </button>
+          <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 py-10 w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {intro}
 
-        <M
-          ref={trackRef}
-          className="absolute left-0 top-0 h-full"
-          style={{ x, width: TRACK_WIDTH }}
-          drag="x"
-          dragMomentum={true}
-          dragElastic={0.12}
-          onDragStart={() => {
-            setIsDragging(true);
-            pausedCompact.current = true;
-          }}
-          onDragEnd={(_e: any, info: PanInfo) => {
-            setIsDragging(false);
-            pausedCompact.current = false;
-            const cur = x.get();
-            if (!targets.length) computeTargets();
-            const t = targets.length ? targets : [];
-            if (!t.length) return;
-            let best = 0;
-            let bestDist = Infinity;
-            t.forEach((val, i) => {
-              const d = Math.abs(val - cur);
-              if (d < bestDist) {
-                bestDist = d;
-                best = i;
-              }
-            });
-            animate(x, t[best], {
-              type: "spring",
-              stiffness: 300,
-              damping: 28,
-            });
-          }}
-          onWheel={(e: WheelEvent) => {
-            e.preventDefault();
-            const container = containerRef.current;
-            const track = trackRef.current;
-            if (!container || !track) return;
-            const viewportW = container.clientWidth;
-            const minX = Math.min(0, viewportW - track.scrollWidth);
-            const cur = x.get();
-            const next = clamp(cur - e.deltaY, minX, 0);
-            animate(x, next, { type: "tween", duration: 0.28 });
-          }}
-        >
-          <RoadSVG d={roadD} width={TRACK_WIDTH} height={TRACK_HEIGHT} />
-          {items.map((c, i) => {
-            const pos = points[i];
-            const state = getCompetitionState(c);
-            return (
-              <div
-                key={c.slug}
-                ref={(el) => {
-                  if (el) milestoneRefs.current[i] = el;
-                }}
-                style={{ position: "absolute", left: pos.x, top: pos.y }}
-                className="-translate-x-1/2 -translate-y-1/2 milestone"
-              >
-                <MilestoneCard c={c} />
-                <div
-                  className={`milestone-glow ${
-                    state.tone === "live" ? "active" : ""
-                  }`}
-                />
+              <div className="lg:col-span-8">
+                <div className="card-premium p-3 sm:p-6 rounded-2xl border border-cream/10">
+                  <div className="relative">
+                    <ScrollReveal>
+                      {mode === "vertical" ? (
+                        <VerticalRoad items={items} />
+                      ) : (
+                        <HorizontalRoad
+                          items={items}
+                          progress={pinned ? pinnedProgress : inlineProgress}
+                          onExpand={() => setIsExpanded(true)}
+                          onStep={step}
+                        />
+                      )}
+                    </ScrollReveal>
+                  </div>
+                </div>
               </div>
-            );
-          })}
-        </M>
-
-        {/* Hint pill — moved to bottom-left so it never overlaps
-            cards riding along the middle of the road. */}
-        <div className="absolute bottom-3 left-3 z-40 pointer-events-none">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 border border-gold/10 text-cream/60 text-xs">
-            <span>Drag to explore · pauses on hover</span>
+            </div>
           </div>
         </div>
-
-        <div className="road-fade-left pointer-events-none" aria-hidden={true} />
-        <div className="road-fade-right pointer-events-none" aria-hidden={true} />
       </div>
 
       {/* ===== FULLSCREEN EXPANDED MODAL — static, measured layout,

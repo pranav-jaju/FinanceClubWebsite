@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { resources, type Resource } from "@/data/resources";
 import LearningRoadmap from "@/components/LearningRoadmap";
+import RevealWords from "@/components/motion/RevealWords";
 
 const typeIcons: Record<Resource["type"], typeof BookOpen> = {
   pdf: BookOpen,
@@ -85,8 +86,8 @@ export default function ResourcesPage() {
         <div className="absolute inset-0 pointer-events-none opacity-35 bg-[radial-gradient(circle_at_top_left,rgba(245,183,49,0.12),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(27,107,64,0.14),transparent_28%)]" />
 
         <div className="relative z-10 max-w-4xl mx-auto">
-          <div className="backdrop-blur-md bg-black/35 border border-cream/10 rounded-3xl px-8 py-10 sm:px-10 sm:py-12">
-            <div className="badge-pill badge-cream mb-6">
+          <div className="hero-shine backdrop-blur-md bg-black/35 border border-cream/10 rounded-3xl px-8 py-10 sm:px-10 sm:py-12">
+            <div className="badge-pill badge-gold mb-6">
               <BookOpen className="w-3 h-3" /> Learn & Grow
             </div>
 
@@ -133,10 +134,10 @@ export default function ResourcesPage() {
 
           {/* Category pills + buttons */}
              <div className="flex flex-wrap items-center justify-between gap-3 mb-10">
-            <div className="flex flex-wrap gap-2 max-sm:gap-1.5">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-6 px-6 w-[calc(100%+3rem)] sm:w-auto sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
               <button
                 onClick={() => setActiveCategory(null)}
-                className={`badge-pill cursor-pointer transition-all max-sm:text-[10px] max-sm:px-2.5 max-sm:py-1 ${
+                className={`badge-pill shrink-0 whitespace-nowrap cursor-pointer transition-all max-sm:text-[10px] max-sm:px-2.5 max-sm:py-1 ${
                   !activeCategory ? "badge-gold" : "badge-cream"
                 }`}
               >
@@ -151,7 +152,7 @@ export default function ResourcesPage() {
                       cat === activeCategory ? null : cat
                     )
                   }
-                  className={`badge-pill cursor-pointer capitalize transition-all max-sm:text-[10px] max-sm:px-2.5 max-sm:py-1 ${
+                  className={`badge-pill shrink-0 whitespace-nowrap cursor-pointer capitalize transition-all max-sm:text-[10px] max-sm:px-2.5 max-sm:py-1 ${
                     activeCategory === cat
                       ? "badge-gold"
                       : "badge-cream"
@@ -214,8 +215,8 @@ export default function ResourcesPage() {
                 "
               >
                 <Map className="w-4 h-4 max-sm:w-3.5 max-sm:h-3.5 shrink-0" />
-                <span className="max-sm:hidden">View FinLearn Roadmap</span>
-                <span className="hidden max-sm:inline"> View Finlearn Roadmap</span>
+                <span className="max-sm:hidden">Explore FinLearn</span>
+                <span className="hidden max-sm:inline">Explore FinLearn</span>
               </a>
 
             </div>
@@ -296,24 +297,23 @@ export default function ResourcesPage() {
             <div className="absolute inset-0 pointer-events-none opacity-25 bg-[radial-gradient(circle_at_top_left,rgba(27,107,64,0.18),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(245,183,49,0.12),transparent_32%)]" />
 
             <div className="relative z-10">
-              <div className="badge-pill badge-crimson mx-auto mb-6">
-                Learning Roadmap
+              <div className="badge-pill badge-gold mx-auto mb-6">
+                FinLearn
               </div>
 
               <h2
                 className="text-3xl sm:text-4xl font-extrabold tracking-[0.02em] mb-4"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                Finance Learning{" "}
-                <span className="text-gradient-crimson">
-                  Roadmap
-                </span>
+                <RevealWords text="Pick Your" />
+                {" "}
+                <RevealWords text="Path" className="text-gradient-gold" delay={0.14} />
+                {" "}
               </h2>
 
               <p className="text-cream/80 max-w-2xl mx-auto text-lg lg:text-2xl leading-relaxed">
-                A curated path for students starting out in finance - from
-                market basics to placement-ready technicals and the CFA
-                track. Click any sector to explore.
+                Five directions, no fixed order. Choose what you want to get
+                better at and dive into hand-picked resources for it.
               </p>
             </div>
           </div>

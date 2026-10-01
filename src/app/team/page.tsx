@@ -4,7 +4,8 @@ import Image from "next/image";
 import { Mail, Phone, Linkedin, User } from "lucide-react";
 import { teamMembers } from "@/data/team";
 import ManagerCard from "@/components/ManagerCard";
-import ConvenerCarousel from "@/components/ConvenerCarousel";
+import ConvenerWall from "@/components/ConvenerWall";
+import RevealWords from "@/components/motion/RevealWords";
 export const metadata: Metadata = {
   title: "Team — Finance Club IIT Bombay",
   description: "Meet the team behind Finance Club IIT Bombay.",
@@ -59,7 +60,7 @@ export default function TeamPage() {
   return (
     <div>
       {/* Hero — unchanged, exactly as you have it */}
-      <section className="relative min-h-screen flex items-center pt-32 pb-20 px-6 lg:px-8 grain overflow-hidden">
+      <section className="relative min-h-[85svh] sm:min-h-screen flex items-center pt-28 sm:pt-32 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-8 grain overflow-hidden">
         {/* ...your existing hero code stays exactly as-is... */}
         <div className="absolute inset-0">
     <Image
@@ -75,7 +76,7 @@ export default function TeamPage() {
   <div className="absolute inset-0 pointer-events-none opacity-35 bg-[radial-gradient(circle_at_top_left,rgba(245,183,49,0.12),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(27,107,64,0.14),transparent_28%)]" />
 
   <div className="relative z-10 max-w-4xl mx-auto">
-    <div className="backdrop-blur-md bg-black/35 border border-cream/10 rounded-3xl px-8 py-10 sm:px-10 sm:py-12">
+    <div className="hero-shine backdrop-blur-md bg-black/35 border border-cream/10 rounded-3xl px-6 py-9 sm:px-10 sm:py-12">
       <div className="badge-pill badge-gold mb-6">The People</div>
 <TypewriterTeamTitle />
     </div>
@@ -85,15 +86,16 @@ export default function TeamPage() {
       <div className="divider" />
 
       {/* ===== TEAM — ONE CONTINUOUS SECTION ===== */}
-      <section className="py-24 px-6 lg:px-8 mesh-gold grain relative">
-        <div className="max-w-[80vw] mx-auto">
+      <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 mesh-gold grain relative">
+        <div className="max-w-5xl mx-auto">
 
           {/* Managers — inside a glass panel */}
-          <div className="backdrop-blur-md bg-black/30 border border-cream/10 rounded-3xl px-8 py-10 sm:px-12 mb-16 max-w-5xl mx-auto">
+          <div className="backdrop-blur-md bg-black/30 border border-cream/10 rounded-3xl px-5 py-10 sm:px-12 mb-10 sm:mb-16 max-w-5xl mx-auto">
             <div className="text-center mb-12">
               <div className="badge-pill badge-gold mb-4">Leadership</div>
-              <h2 className="text-5xl font-extrabold" style={{ fontFamily: "var(--font-display)" }}>
-                <span className="text-gradient-gold">Managers</span>
+              <h2 className="text-4xl sm:text-5xl font-extrabold" style={{ fontFamily: "var(--font-display)" }}>
+                <RevealWords text="Managers" className="text-gradient-gold" />
+                {" "}
               </h2>
             </div>
             <div className="mx-auto flex w-fit flex-col items-center gap-8 sm:flex-row sm:gap-10 lg:gap-12">
@@ -103,14 +105,15 @@ export default function TeamPage() {
 
           {/* Conveners — same page, no divider, no mesh change */}
           {/* Conveners — same glass box width, same card design, 3D rotating carousel */}
-<div className="backdrop-blur-md bg-black/30 border border-cream/10 rounded-3xl px-8 py-14 sm:px-12 max-w-5xl mx-auto">
+<div className="backdrop-blur-md bg-black/30 border border-cream/10 rounded-3xl px-4 py-10 sm:py-14 sm:px-10 lg:px-12 max-w-5xl mx-auto overflow-hidden">
   <div className="text-center mb-12">
-    <div className="badge-pill badge-crimson mb-4">Core Team</div>
-    <h2 className="text-5xl font-extrabold" style={{ fontFamily: "var(--font-display)" }}>
-      <span className="text-gradient-crimson">Conveners</span>
+    <div className="badge-pill badge-gold mb-4">Core Team</div>
+    <h2 className="text-4xl sm:text-5xl font-extrabold" style={{ fontFamily: "var(--font-display)" }}>
+      <RevealWords text="Conveners" className="text-gradient-gold" />
+      {" "}
     </h2>
   </div>
-  <ConvenerCarousel conveners={conveners} />
+  <ConvenerWall conveners={conveners} />
 </div>
 
         </div>

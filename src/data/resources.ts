@@ -28,6 +28,15 @@ export const resources: Resource[] = [
     date: "2025-12-10",
   },
   {
+    id: "14",
+    title: "ERC 2026 Sample Submissions",
+    description: "Sample equity research reports to use as a reference while preparing your Equity Research Competition 2026 submission.",
+    type: "submission",
+    category: "Winning Submissions",
+    url: "https://drive.google.com/drive/folders/1OuTGqOKqCfD2AUFymRUDRDo8lW7r43r6?usp=sharing",
+    date: "2026-10-02",
+  },
+  {
     id: "10",
     title: "PMC 2025 Winning Submissions",
     description: "Top 3 Consolidated Portfolio reports from last year's Portfolio Management Competition.",

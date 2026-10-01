@@ -16,6 +16,10 @@ export interface ClubEvent {
   outcome: string;
   partnerLogo?: string;
   partnerName?: string;
+  /** Optional poster/cover image (path under /public, prefixed with /Finance-Club). */
+  image?: string;
+  /** Flagship events get a double-width tile on the Events page. */
+  featured?: boolean;
 }
 
 export const eventCategories: { id: EventCategory; label: string }[] = [
@@ -33,6 +37,8 @@ export const clubEvents: ClubEvent[] = [
 
   {
     id: "comp-1",
+    featured: true,
+    image: "/Finance-Club/EquityResearchCompetition.png",
     name: "Equity Research Competition",
     category: "competitions",
     description:
@@ -127,6 +133,7 @@ export const clubEvents: ClubEvent[] = [
 
   {
     id: "boot-2",
+    featured: true,
     name: "Quant101 - Winter School of Quantitative Finance",
     category: "bootcamps",
     description:
@@ -148,6 +155,8 @@ export const clubEvents: ClubEvent[] = [
 
   {
     id: "conf-1",
+    featured: true,
+    image: "/Finance-Club/forensicfiles.JPG",
     name: "FinFest",
     category: "conferences",
     description:
@@ -222,6 +231,8 @@ export const clubEvents: ClubEvent[] = [
 
   {
     id: "boot-3",
+    featured: true,
+    image: "/Finance-Club/Finsearch.png",
     name: "FinSearch",
     category: "bootcamps",
     description:
@@ -242,6 +253,8 @@ export const clubEvents: ClubEvent[] = [
 
   {
     id: "comp-6",
+    featured: true,
+    image: "/Finance-Club/PMC.png",
     name: "Portfolio Management Competition",
     category: "competitions",
     description:

@@ -222,43 +222,33 @@ export const competitions: Competition[] = [
     partnerName: "CFA Institute",
   },
   {
-    id: "5",
+    id: "vittharth-2026",
 
-    slug: "finance-quiz-cfa-2025",
+    slug: "vittharth",
 
     name: "Vittharth",
 
+    // TODO: replace with Vittharth's real description, deadlines and format.
     shortDescription:
-      "Test your understanding of financial analysis, quantitative methods, and investment principles through a CFA-aligned challenge.",
+      "Full details for Vittharth will be announced soon.",
 
     description:
-      "The Finance Quiz — CFA Collaboration is a rigorous finance competition conducted in association with the CFA Institute. Structured as a CFA Scholarship Test, the competition evaluates participants across financial analysis, quantitative methods, investment principles, and other concepts aligned with the CFA Level I curriculum. The event is designed to test both conceptual understanding and the ability to apply financial knowledge under competitive conditions, while giving participants exposure to globally recognised standards in investment education.",
+      "Full details for Vittharth, including format, timeline and eligibility, will be announced soon. Follow Finance Club IIT Bombay for updates.",
 
     status: "past",
 
     registrationDeadline: "2026-06-07",
 
-    submissionDeadline: "2025-11-10",
+    submissionDeadline: "2026-06-07",
 
-    resultsDate: "2025-11-15",
+    resultsDate: "2026-06-07",
 
-    rules: [
-      "Individual participation is required.",
-      "The competition evaluates financial analysis, quantitative methods, and investment principles.",
-      "Questions are designed around concepts aligned with the CFA Level I curriculum.",
-      "Participants must follow the format and timing announced for each round or stage.",
-      "External assistance or unauthorised materials are prohibited unless explicitly permitted.",
-      "Top performers may be eligible for prizes, scholarships, or other announced rewards.",
-    ],
+    rules: [],
 
     allowTeams: false,
 
     maxTeamSize: 1,
 
     image: "/competitions/quiz.jpg",
-
-    partnerLogo: "/Finance-Club/cfa_institute.png",
-
-    partnerName: "CFA Institute",
   },
 ];

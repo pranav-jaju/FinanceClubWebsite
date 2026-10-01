@@ -4,6 +4,8 @@ import { Target, BarChart3, Globe, GraduationCap, Briefcase, TrendingUp, ArrowRi
 import Link from "next/link";
 import TypewriterAboutTitle from "@/components/TypewriterAboutTitle";
 import DomainBubbles from "@/components/DomainBubbles";
+import { StaggerGrid, StaggerItem } from "@/components/StaggerReveal";
+import RevealWords from "@/components/motion/RevealWords";
 export const metadata: Metadata = {
   title: "About — Finance Club IIT Bombay",
   description: "Learn about Finance Club IIT Bombay — our mission, activities, and opportunities.",
@@ -43,7 +45,7 @@ export default function AboutPage() {
   <div className="absolute inset-0 pointer-events-none opacity-30 bg-[radial-gradient(circle_at_top_left,rgba(245,183,49,0.12),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(27,107,64,0.14),transparent_28%)]" />
 
   <div className="relative z-10 max-w-4xl mx-auto">
-    <div className="backdrop-blur-md bg-black/35 border border-cream/10 rounded-3xl px-8 py-10 sm:px-10 sm:py-12">
+    <div className="hero-shine backdrop-blur-md bg-black/35 border border-cream/10 rounded-3xl px-8 py-10 sm:px-10 sm:py-12">
       <div className="badge-pill badge-gold mb-6">About Us</div>
       <TypewriterAboutTitle />
     </div>
@@ -64,7 +66,7 @@ export default function AboutPage() {
       <div className="absolute inset-0 bg-gradient-to-br from-[#141010]/90 via-[#141010]/85 to-[#141010]/95 pointer-events-none" />
 
       <div className="relative z-10">
-        <h2 className="text-5xl lg:text-6xl font-extrabold text-gradient-gold mb-6" style={{ fontFamily: "var(--font-display)" }}>Who We Are</h2>
+        <h2 className="text-5xl lg:text-6xl font-extrabold mb-6" style={{ fontFamily: "var(--font-display)" }}><RevealWords text="Who We Are" className="text-gradient-gold" /></h2>
         <div className="space-y-4 text-cream/90 leading-relaxed">
           <p className='text-lg lg:text-xl'>
             Finance Club IIT Bombay is the institute&apos;s foremost student body dedicated to finance
@@ -104,12 +106,15 @@ export default function AboutPage() {
 
   <div className="relative z-10 max-w-6xl mx-auto">
     <div className="text-center mb-14">
-      <div className="badge-pill badge-crimson mx-auto mb-6">Our Activities</div>
+      <div className="badge-pill badge-gold mx-auto mb-6">Our Activities</div>
       <h2 className="text-4xl sm:text-6xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
-        What We <span className="text-gradient-crimson">Do</span>
+        <RevealWords text="What We" />
+        {" "}
+        <RevealWords text="Do" className="text-gradient-gold" delay={0.14} />
+        {" "}
       </h2>
     </div>
-    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+    <StaggerGrid className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
   {[
     { icon: Target, title: "Competitions", desc: "Flagship events attracting hundreds from premier institutions.", color: "text-gold" },
     { icon: GraduationCap, title: "Bootcamps", desc: "Intensive sessions on financial modeling, valuation and trading.", color: "text-crimson-light" },
@@ -118,16 +123,17 @@ export default function AboutPage() {
     { icon: Globe, title: "Publications", desc: "Comprehensive primers, market analysis and learning pathways.", color: "text-crimson-light" },
     { icon: TrendingUp, title: "Career Prep", desc: "Curated Resources for interviews, GDs and case studies for finance placements.", color: "text-cream" },
   ].map((item) => (
+    <StaggerItem key={item.title} className="h-full">
     <div
-      key={item.title}
-      className="card-premium p-4 sm:p-8 group cursor-default hover:bg-[#141010] transition-colors duration-300"
+      className="card-premium h-full p-4 sm:p-8 group cursor-default hover:bg-[#141010] transition-colors duration-300"
     >
       <item.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${item.color} mb-2 sm:mb-4 group-hover:scale-110 transition-transform`} />
       <h3 className="font-bold text-base sm:text-2xl mb-1.5 sm:mb-2 text-cream" style={{ fontFamily: "var(--font-display)" }}>{item.title}</h3>
       <p className="text-xs sm:text-lg text-cream/60 leading-relaxed">{item.desc}</p>
     </div>
+    </StaggerItem>
   ))}
-</div>
+</StaggerGrid>
   </div>
 </section>
 
@@ -137,9 +143,12 @@ export default function AboutPage() {
       <section className="py-24 px-6 lg:px-8 mesh-gold">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-14">
-            <div className="badge-pill badge-cream mx-auto mb-6">Domains</div>
-            <h2 className="text-6xl sm:text-5xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
-              Areas We <span className="text-gradient-gold">Explore</span>
+            <div className="badge-pill badge-gold mx-auto mb-6">Domains</div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+              <RevealWords text="Areas We" />
+              {" "}
+              <RevealWords text="Explore" className="text-gradient-gold" delay={0.14} />
+              {" "}
             </h2>
           </div>
           <DomainBubbles />
@@ -160,7 +169,10 @@ export default function AboutPage() {
                 sizes="(max-width: 1024px) 100vw, 800px"
               />
             <h2 className="text-5xl font-extrabold tracking-tight mb-4" style={{ fontFamily: "var(--font-display)" }}>
-              Know the <span className="text-gradient-gold">Team</span>
+              <RevealWords text="Know the" />
+              {" "}
+              <RevealWords text="Team" className="text-gradient-gold" delay={0.14} />
+              {" "}
             </h2>
             <p className="text-cream/50 max-w-md mx-auto mb-8 text-xl">
               Faces behind the club - leading initiatives that impact thousands of students.

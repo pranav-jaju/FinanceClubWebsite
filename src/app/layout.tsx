@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import SmoothScroll from "@/components/layout/SmoothScroll";
 import { Aboreto } from 'next/font/google'
 import { Lato } from "next/font/google";
 import { Newsreader } from 'next/font/google'
@@ -63,6 +64,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${fascinate.variable} ${rockSalt.variable} ${spaceGrotesk.variable} ${test.variable} ${test2.variable} antialiased`}>
+        <SmoothScroll />
         <Navbar />
         <main className="min-h-screen">
           {children}

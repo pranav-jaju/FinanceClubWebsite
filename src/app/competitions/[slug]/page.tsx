@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 import { competitions } from "@/data/competitions";
+import RevealWords from "@/components/motion/RevealWords";
 
 const FINANCE_CLUB_LINKTREE =
   "https://l.instagram.com/?u=https%3A%2F%2Flnk.bio%2Ffinanceclubiitb%3Futm_source%3Dig%26utm_medium%3Dsocial%26utm_content%3Dlink_in_bio%26fbclid%3DPAcGRvZgJleHRuA2FlbQIxMQBzcnRjBmFwcF9pZA85MzY2MTk3NDMzOTI0NTkAAafQ-_qN_4OhVuT9yScv0-xdgVCIM_ePnRks6ofMwi8uJkWNrACrKw7JB-cYEg_aem_bpUMoiyH9L5zryStaUVJ-Q&e=AUDKKIDci_XsqrCp-nzmr2egaO8ESKn7ZujI_PTsdzjrgtXVAvw4ogDoSCo_NeARi051m7DcxPiJI_BbCNq7XS8Ng7WhzI36fXRxjuMG8u7wpE799BR0j8xSPiILcARRe-lKgg7vnuIs";
@@ -153,7 +154,7 @@ export default function CompetitionDetailPage({
       <section className="py-16 sm:py-20 px-6">
         <div className="max-w-6xl mx-auto text-left">
           <p
-            className="text-lg sm:text-2xl lg:text-xl text-cream/60 max-w-6xl mx-auto leading-relaxed"
+            className="text-lg sm:text-xl text-cream/60 max-w-6xl mx-auto leading-relaxed"
             style={{
               fontFamily: "var(--font-body)",
             }}
@@ -175,7 +176,8 @@ export default function CompetitionDetailPage({
               fontFamily: "var(--font-body)",
             }}
           >
-            Timeline
+            <RevealWords text="Timeline" />
+            {" "}
           </h2>
 
           <div className="rounded-[2rem] border border-gold/25 bg-[#110E0E] px-8 py-12 sm:px-14 sm:py-16 flex items-center justify-center">
@@ -216,11 +218,12 @@ export default function CompetitionDetailPage({
               fontFamily: "var(--font-display)",
             }}
           >
-            Want to Know More?
+            <RevealWords text="Want to Know More?" />
+            {" "}
           </h2>
 
           <p
-            className="max-w-3xl mx-auto text-lg sm:text-2xl lg:text-xl leading-relaxed text-cream/55 mb-11"
+            className="max-w-3xl mx-auto text-lg sm:text-xl leading-relaxed text-cream/55 mb-11"
             style={{
               fontFamily: "var(--font-body)",
             }}
@@ -232,7 +235,7 @@ export default function CompetitionDetailPage({
           <Button
             asChild
             size="lg"
-            className="gradient-gold text-[#1A1208] hover:opacity-90 px-8 sm:px-10 py-6 sm:py-7 text-base sm:text-lg rounded-2xl"
+            className="gradient-gold text-[#1A1208] hover:opacity-90 px-8 sm:px-10 py-6 sm:py-7 text-base sm:text-lg rounded-2xl h-auto max-w-full whitespace-normal sm:whitespace-nowrap text-center"
             style={{
               fontFamily: "var(--font-body)",
             }}

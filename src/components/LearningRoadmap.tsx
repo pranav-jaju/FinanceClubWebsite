@@ -1,15 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-motion";
 import {
   TrendingUp,
   BarChart3,
   Briefcase,
   Award,
   BookOpen,
-  X,
+  ChevronDown,
   ExternalLink,
+  FileText,
+  Globe,
+  PlayCircle,
 } from "lucide-react";
 
 interface ResourceItem {
@@ -22,8 +26,11 @@ interface ResourceItem {
 interface RoadmapSection {
   id: string;
   icon: typeof TrendingUp;
+  /** The area itself, e.g. "Financial Modelling & Valuation". */
   label: string;
-  tagline: string;
+  /** What the student wants to do — the branch's headline. */
+  goal: string;
+  forYou: string;
   resources: ResourceItem[];
 }
 
@@ -32,7 +39,8 @@ const SECTIONS: RoadmapSection[] = [
     id: "fundamentals",
     icon: TrendingUp,
     label: "Market & Business Fundamentals",
-    tagline: "Start Here",
+    goal: "Understand markets",
+    forYou: "For you if you're new to finance and want to follow markets and businesses with confidence.",
     resources: [
       {
         title: "Zerodha Varsity",
@@ -65,7 +73,8 @@ const SECTIONS: RoadmapSection[] = [
     id: "modelling",
     icon: BarChart3,
     label: "Financial Modelling & Valuation",
-    tagline: "Core Skills",
+    goal: "Build & value companies",
+    forYou: "For you if you want to model a business and put a number on what it's worth.",
     resources: [
       {
         title: "The Valuation School — Channel",
@@ -93,7 +102,8 @@ const SECTIONS: RoadmapSection[] = [
     id: "placement",
     icon: Briefcase,
     label: "Placement Prep: Core Technicals",
-    tagline: "Interview Ready",
+    goal: "Crack finance interviews",
+    forYou: "For you if IB, PE or finance placements are the goal.",
     resources: [
       {
         title: "Breaking Into Wall Street (BIWS)",
@@ -121,7 +131,8 @@ const SECTIONS: RoadmapSection[] = [
     id: "cfa",
     icon: Award,
     label: "CFA Track",
-    tagline: "Certification Path",
+    goal: "Get certified",
+    forYou: "For you if you're considering the CFA charter.",
     resources: [
       {
         title: "Schweser CFA Level 1",
@@ -149,7 +160,8 @@ const SECTIONS: RoadmapSection[] = [
     id: "books",
     icon: BookOpen,
     label: "Books",
-    tagline: "Deep Reading",
+    goal: "Go deeper",
+    forYou: "For you if you'd rather learn from the classics behind the craft.",
     resources: [
       { title: "One Up on Wall Street", author: "Peter Lynch", desc: "How to think about businesses as investments." },
       { title: "The Intelligent Investor", author: "Benjamin Graham", desc: "The fundamentals of value investing." },
@@ -163,183 +175,399 @@ const SECTIONS: RoadmapSection[] = [
   },
 ];
 
-const SECTOR_COUNT = SECTIONS.length;
-const ANGLE_STEP = 360 / SECTOR_COUNT;
-const START_OFFSET = -90;
-const GAP_DEG = 7; // visual spacing between sectors
-const INNER_RADIUS = 24; // % — radius of the empty hole in the middle
-const OUTER_RADIUS = 48; // % — radius of the sectors' outer edge
 
-function polar(radiusPct: number, angleDeg: number) {
-  const rad = (angleDeg * Math.PI) / 180;
-  return {
-    left: 50 + radiusPct * Math.cos(rad),
-    top: 50 + radiusPct * Math.sin(rad),
-  };
+/* ------------------------------------------------------------------
+   Helpers
+------------------------------------------------------------------- */
+
+const EASE = [0.16, 1, 0.3, 1] as const;
+
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+function kindOf(r: ResourceItem): { Icon: typeof Globe; label: string } {
+  if (!r.url) return { Icon: BookOpen, label: r.author ? "Book" : "Read" };
+  let host = "";
+  try {
+    host = new URL(r.url).hostname.replace(/^www\./, "");
+  } catch {
+    return { Icon: Globe, label: "Link" };
+  }
+  if (host.includes("youtube")) return { Icon: PlayCircle, label: "YouTube" };
+  if (host.includes("drive.google")) return { Icon: FileText, label: "PDF · Drive" };
+  return { Icon: Globe, label: host };
 }
 
-// True donut-wedge polygon: samples points along both the outer and inner
-// arcs so each sector has its own curved edges — no shared parent mask
-// needed, which is what makes real gaps between sectors possible.
-function donutWedgeClipPath(startAngle: number, endAngle: number) {
-  const steps = 10;
-  const outerPoints = [];
-  const innerPoints = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const angle = startAngle + t * (endAngle - startAngle);
-    outerPoints.push(polar(OUTER_RADIUS, angle));
+// Position of `el` inside `root`, ignoring CSS transforms (so measurements
+// stay correct while nodes are mid-animation).
+function offsetWithin(el: HTMLElement, root: HTMLElement) {
+  let x = 0;
+  let y = 0;
+  let node: HTMLElement | null = el;
+  while (node && node !== root) {
+    x += node.offsetLeft;
+    y += node.offsetTop;
+    node = node.offsetParent as HTMLElement | null;
   }
-  for (let i = steps; i >= 0; i--) {
-    const t = i / steps;
-    const angle = startAngle + t * (endAngle - startAngle);
-    innerPoints.push(polar(INNER_RADIUS, angle));
-  }
-  const all = [...outerPoints, ...innerPoints];
-  return `polygon(${all.map((p) => `${p.left}% ${p.top}%`).join(", ")})`;
+  return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+}
+
+function curve(x1: number, y1: number, x2: number, y2: number) {
+  const mx = (x1 + x2) / 2;
+  return `M${x1} ${y1} C${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+}
+
+function LeafCard({ r, compact = false }: { r: ResourceItem; compact?: boolean }) {
+  const { Icon, label } = kindOf(r);
+  const inner = (
+    <div
+      className={`group flex items-start gap-3 rounded-xl border border-cream/10 bg-[#141010]/90 backdrop-blur-sm transition-colors duration-300 ${
+        r.url ? "hover:border-gold/40 hover:bg-[#1C1616]" : ""
+      } ${compact ? "p-3" : "p-3.5"}`}
+    >
+      <span className="mt-0.5 shrink-0 w-8 h-8 rounded-lg bg-gold/10 border border-gold/20 flex items-center justify-center text-gold">
+        <Icon className="w-4 h-4" />
+      </span>
+      <div className="min-w-0 flex-1 text-left">
+        <div className="flex items-center gap-2">
+          <h4
+            className="font-bold text-[15px] text-cream leading-snug group-hover:text-gold transition-colors"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {r.title}
+          </h4>
+          {r.url && (
+            <ExternalLink className="w-3.5 h-3.5 shrink-0 text-cream/30 group-hover:text-gold transition-colors" />
+          )}
+        </div>
+        <p className="text-[11px] uppercase tracking-wider text-gold/70 mt-0.5">
+          {r.author ? `${label} · ${r.author}` : label}
+        </p>
+        <p className="text-sm text-cream/65 leading-relaxed mt-1 line-clamp-2">{r.desc}</p>
+      </div>
+    </div>
+  );
+  return r.url ? (
+    <a href={r.url} target="_blank" rel="noopener noreferrer" className="block">
+      {inner}
+    </a>
+  ) : (
+    inner
+  );
+}
+
+/* ------------------------------------------------------------------
+   Desktop — a left-to-right branching map:
+   hub → five goals → resources of the chosen goal
+------------------------------------------------------------------- */
+
+function BranchMap() {
+  const reduce = useReducedMotion();
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const hubRef = useRef<HTMLDivElement | null>(null);
+  const goalRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const leafRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const inView = useInView(rootRef, { once: true, amount: 0.25 });
+
+  const [activeId, setActiveId] = useState<string>(SECTIONS[0].id);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [trunks, setTrunks] = useState<string[]>([]);
+  const [twigs, setTwigs] = useState<string[]>([]);
+
+  const activeIndex = SECTIONS.findIndex((s) => s.id === activeId);
+  const active = SECTIONS[activeIndex];
+
+  useIsoLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const measure = () => {
+      const hub = hubRef.current;
+      if (!hub) return;
+      const h = offsetWithin(hub, root);
+      const hx = h.x + h.w;
+      const hy = h.y + h.h / 2;
+
+      const goalBoxes = goalRefs.current.map((el) => (el ? offsetWithin(el, root) : null));
+      setTrunks(goalBoxes.map((g) => (g ? curve(hx, hy, g.x, g.y + g.h / 2) : "")));
+
+      const g = goalBoxes[activeIndex];
+      if (g) {
+        const gx = g.x + g.w;
+        const gy = g.y + g.h / 2;
+        setTwigs(
+          leafRefs.current
+            .slice(0, active.resources.length)
+            .map((el) => {
+              if (!el) return "";
+              const l = offsetWithin(el, root);
+              return curve(gx, gy, l.x, l.y + Math.min(l.h / 2, 30));
+            })
+        );
+      }
+      setSize({ w: root.scrollWidth, h: root.scrollHeight });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(root);
+    return () => ro.disconnect();
+  }, [activeId]);
+
+  return (
+    <div
+      ref={rootRef}
+      className="relative grid grid-cols-[200px_300px_1fr] xl:grid-cols-[220px_320px_1fr] gap-x-14 items-start text-left"
+    >
+      {/* Connectors */}
+      <svg
+        className="absolute left-0 top-0 pointer-events-none overflow-visible"
+        width={size.w}
+        height={size.h}
+        aria-hidden
+      >
+        {trunks.map((d, i) =>
+          d ? (
+            <motion.path
+              key={`trunk-${i}`}
+              d={d}
+              fill="none"
+              strokeLinecap="round"
+              initial={{ pathLength: 0 }}
+              animate={{
+                pathLength: inView ? 1 : 0,
+                stroke: i === activeIndex ? "rgba(245,183,49,0.85)" : "rgba(245,230,208,0.14)",
+                strokeWidth: i === activeIndex ? 2 : 1.25,
+              }}
+              transition={{ pathLength: { duration: reduce ? 0 : 0.9, delay: reduce ? 0 : 0.2 + i * 0.12, ease: EASE }, default: { duration: 0.4 } }}
+              style={i === activeIndex ? { filter: "drop-shadow(0 0 6px rgba(245,183,49,0.6))" } : undefined}
+            />
+          ) : null
+        )}
+        {inView && twigs.map((d, i) =>
+          d ? (
+            <motion.path
+              key={`twig-${activeId}-${i}`}
+              d={d}
+              fill="none"
+              stroke="rgba(245,183,49,0.45)"
+              strokeWidth={1.25}
+              strokeLinecap="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: reduce ? 0 : 0.6, delay: reduce ? 0 : 0.05 + i * 0.06, ease: EASE }}
+            />
+          ) : null
+        )}
+      </svg>
+
+      {/* Hub */}
+      <div className="self-center flex flex-col items-center text-center">
+        <motion.div
+          ref={hubRef}
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={inView ? { opacity: 1, scale: 1 } : {}}
+          transition={{ duration: 0.8, ease: EASE }}
+          className="relative w-36 h-36 xl:w-40 xl:h-40 rounded-full"
+        >
+          <span className="absolute -inset-3 rounded-full border border-gold/20 animate-[ping_3.5s_cubic-bezier(0,0,0.2,1)_infinite] opacity-40" />
+          <span className="absolute -inset-1 rounded-full bg-gold/10 blur-xl" />
+          <div className="relative w-full h-full rounded-full overflow-hidden border border-gold/40 shadow-[0_0_50px_-10px_rgba(245,183,49,0.5)]">
+            <Image src="/Finance-Club/logo.jpg" alt="Finance Club logo" fill className="object-cover" sizes="160px" />
+          </div>
+        </motion.div>
+        <p
+          className="mt-5 text-lg text-cream/80 leading-snug"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          What do you want
+          <br />
+          <span className="text-gradient-gold font-bold">to do?</span>
+        </p>
+      </div>
+
+      {/* Goals */}
+      <div className="flex flex-col gap-3 py-2">
+        {SECTIONS.map((s, i) => {
+          const isActive = s.id === activeId;
+          return (
+            <motion.button
+              key={s.id}
+              ref={(el) => {
+                goalRefs.current[i] = el;
+              }}
+              type="button"
+              onClick={() => setActiveId(s.id)}
+              aria-pressed={isActive}
+              initial={{ opacity: 0, x: -16 }}
+              animate={inView ? { opacity: 1, x: 0 } : {}}
+              transition={{ duration: 0.6, delay: reduce ? 0 : 0.35 + i * 0.1, ease: EASE }}
+              className={`group relative w-full rounded-2xl border px-4 py-3.5 text-left transition-all duration-300 ${
+                isActive
+                  ? "border-gold/50 bg-gold/[0.08] shadow-[0_0_40px_-12px_rgba(245,183,49,0.55)]"
+                  : "border-cream/10 bg-[#141010]/70 hover:border-gold/30 opacity-75 hover:opacity-100"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span
+                  className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                    isActive ? "bg-gold text-[#0D0A0A]" : "bg-gold/10 text-gold border border-gold/20"
+                  }`}
+                >
+                  <s.icon className="w-5 h-5" />
+                </span>
+                <div className="min-w-0">
+                  <div
+                    className={`font-bold text-[17px] leading-tight ${isActive ? "text-gold" : "text-cream"}`}
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    {s.goal}
+                  </div>
+                  <div className="text-xs text-cream/50 mt-0.5 truncate">{s.label}</div>
+                </div>
+                <span className="ml-auto text-[11px] tabular-nums text-cream/40">{s.resources.length}</span>
+              </div>
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Resources of the chosen goal */}
+      <div className="min-h-[420px]">
+        {/* Keyed so the new resources mount immediately — the connector
+            measurement in the layout effect then sees the right cards. */}
+        <motion.div
+            key={activeId}
+            initial={{ opacity: 0 }}
+            animate={inView ? { opacity: 1 } : {}}
+          >
+            <p className="text-sm text-cream/60 mb-3 italic">{active.forYou}</p>
+            <div className="flex flex-col gap-2.5">
+              {active.resources.map((r, i) => (
+                <motion.div
+                  key={r.title}
+                  ref={(el) => {
+                    leafRefs.current[i] = el;
+                  }}
+                  initial={{ opacity: 0, x: -14 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: reduce ? 0 : 0.12 + i * 0.06, ease: EASE }}
+                >
+                  <LeafCard r={r} compact />
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------
+   Mobile / tablet — the same branches as tappable rows that open up
+------------------------------------------------------------------- */
+
+function BranchList() {
+  const [openId, setOpenId] = useState<string | null>(SECTIONS[0].id);
+  const reduce = useReducedMotion();
+
+  return (
+    <div className="text-left">
+      <div className="flex items-center gap-3 mb-5 justify-center">
+        <div className="relative w-12 h-12 rounded-full overflow-hidden border border-gold/40 shadow-[0_0_30px_-8px_rgba(245,183,49,0.6)]">
+          <Image src="/Finance-Club/logo.jpg" alt="Finance Club logo" fill className="object-cover" sizes="48px" />
+        </div>
+        <p className="text-lg text-cream/80" style={{ fontFamily: "var(--font-display)" }}>
+          What do you want <span className="text-gradient-gold font-bold">to do?</span>
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {SECTIONS.map((s, i) => {
+          const open = openId === s.id;
+          return (
+            <motion.div
+              key={s.id}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.4 }}
+              transition={{ duration: 0.5, delay: reduce ? 0 : i * 0.06, ease: EASE }}
+              className={`rounded-2xl border transition-colors ${
+                open ? "border-gold/45 bg-gold/[0.06]" : "border-cream/10 bg-[#141010]/70"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => setOpenId(open ? null : s.id)}
+                aria-expanded={open}
+                className="w-full flex items-center gap-3 p-4 text-left"
+              >
+                <span
+                  className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
+                    open ? "bg-gold text-[#0D0A0A]" : "bg-gold/10 text-gold border border-gold/20"
+                  }`}
+                >
+                  <s.icon className="w-5 h-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div
+                    className={`font-bold text-[17px] leading-tight ${open ? "text-gold" : "text-cream"}`}
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    {s.goal}
+                  </div>
+                  <div className="text-xs text-cream/50 mt-0.5">{s.label}</div>
+                </div>
+                <ChevronDown
+                  className={`w-5 h-5 shrink-0 text-cream/50 transition-transform duration-300 ${open ? "rotate-180 text-gold" : ""}`}
+                />
+              </button>
+
+              <AnimatePresence initial={false}>
+                {open && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: reduce ? 0 : 0.4, ease: EASE }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-4 pb-4">
+                      <p className="text-sm text-cream/60 italic mb-3">{s.forYou}</p>
+                      {/* Branch line with a twig to each resource */}
+                      <div className="relative pl-5 flex flex-col gap-2.5">
+                        <span className="absolute left-1.5 top-0 bottom-6 w-px bg-gradient-to-b from-gold/70 to-gold/10" />
+                        {s.resources.map((r, j) => (
+                          <motion.div
+                            key={r.title}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.35, delay: reduce ? 0 : 0.08 + j * 0.05, ease: EASE }}
+                            className="relative"
+                          >
+                            <span className="absolute -left-3.5 top-7 w-3 h-px bg-gold/50" />
+                            <LeafCard r={r} compact />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function LearningRoadmap() {
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const activeSection = SECTIONS.find((s) => s.id === activeId) ?? null;
-
   return (
-    <div className="relative flex justify-center">
-      <div className="relative w-[380px] h-[380px] sm:w-[540px] sm:h-[540px] lg:w-[660px] lg:h-[660px]">
-       {SECTIONS.map((section, i) => {
-          const startAngle = START_OFFSET + i * ANGLE_STEP + GAP_DEG / 2;
-          const endAngle = START_OFFSET + (i + 1) * ANGLE_STEP - GAP_DEG / 2;
-
-          return (
-            <button
-              key={section.id}
-              onClick={() => setActiveId(section.id)}
-              className="absolute inset-0 cursor-pointer group"
-              style={{ clipPath: donutWedgeClipPath(startAngle, endAngle) }}
-              aria-label={`Open ${section.label}`}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-[#1C1616] to-[#141010] border border-gold/15 transition-colors duration-300 group-hover:from-[#231C1C] group-hover:border-gold/40" />
-            </button>
-          );
-        })}
-
-        {/* Labels rendered as a separate, unclipped layer on top so text
-            is never sliced by a sector's angled edge */}
-        {SECTIONS.map((section, i) => {
-          const startAngle = START_OFFSET + i * ANGLE_STEP + GAP_DEG / 2;
-          const endAngle = START_OFFSET + (i + 1) * ANGLE_STEP - GAP_DEG / 2;
-          const bisector = (startAngle + endAngle) / 2;
-          const labelPos = polar(INNER_RADIUS + (OUTER_RADIUS - INNER_RADIUS) * 0.48, bisector);
-
-          return (
-            <div
-              key={`label-${section.id}`}
-              className="absolute flex flex-col items-center text-center pointer-events-none px-1"
-              style={{
-                left: `${labelPos.left}%`,
-                top: `${labelPos.top}%`,
-                transform: "translate(-50%, -50%)",
-                width: "28%",
-              }}
-            >
-              <section.icon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-gold mb-2" />
-              <span
-                className="font-bold text-[10px] sm:text-[13px] lg:text-[15px] text-cream leading-[1.15]"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                {section.label}
-              </span>
-              <span className="text-[9px] sm:text-[11px] text-gold/50 mt-1 uppercase tracking-wider">
-                {section.tagline}
-              </span>
-            </div>
-          );
-        })}
-
-        {/* Center hub */}
-        <div
-          className="absolute rounded-full bg-[#0D0A0A] border border-gold/30 overflow-hidden pointer-events-none z-10 flex items-center justify-center"
-          style={{
-            left: "50%",
-            top: "50%",
-            width: `28%`,
-            height: `28%`,
-            transform: "translate(-50%, -50%)",
-          }}
-        >
-          <Image src="/Finance-Club/logo.jpg" alt="Finance Club logo" fill className="object-cover" sizes="120px" />
-        </div>
+    <>
+      <div className="hidden lg:block">
+        <BranchMap />
       </div>
-
-      {/* ===== FULLSCREEN CONTENT MODAL ===== */}
-      {activeSection && (
-        <div className="fixed inset-0 z-[200] bg-[#0D0A0A]/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-8">
-          <div className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto backdrop-blur-md bg-black/40 border border-gold/20 rounded-3xl p-6 sm:p-10">
-  <button
-    onClick={() => setActiveId(null)}
-    className="sticky top-0 float-right mb-8 flex items-center gap-2 px-4 py-2 rounded-full bg-black/60 border border-gold/15 text-cream/70 text-sm hover:text-gold hover:border-gold/30 transition-colors z-10"
-  >
-    <X className="w-4 h-4" /> Close
-  </button>
-
-  <div className="clear-both pt-4">
-    <div className="relative overflow-hidden backdrop-blur-md border border-cream/10 rounded-2xl px-6 py-6 sm:px-8 sm:py-7 mb-8">
-      <Image
-        src="/Finance-Club/art1.JPG"
-        alt=""
-        fill
-        className="object-cover"
-        sizes="(max-width: 768px) 100vw, 700px"
-      />
-      <div className="absolute inset-0 bg-black/78" />
-      <div className="absolute inset-0 pointer-events-none opacity-25 bg-[radial-gradient(circle_at_top_left,rgba(245,183,49,0.15),transparent_35%)]" />
-
-      <div className="relative z-10">
-    <div className="badge-pill badge-gold mb-4">
-      <activeSection.icon className="w-3 h-3" />
-      {activeSection.tagline}
-    </div>
-    <h3
-      className="text-2xl sm:text-3xl font-extrabold text-cream"
-      style={{ fontFamily: "var(--font-display)" }}
-    >
-      {activeSection.label}
-                  </h3>
-                  </div>
-  </div>
-
-  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {activeSection.resources.map((r) => (
-                  <div key={r.title} className="card-glow-gold p-5">
-                    <h4
-                      className="font-bold text-lg text-cream mb-1"
-                      style={{ fontFamily: "var(--font-display)" }}
-                    >
-                      {r.title}
-                    </h4>
-                    {r.author && (
-                      <p className="text-xs text-gold/60 mb-2">{r.author}</p>
-                    )}
-                    <p className="text-sm text-cream/80 leading-relaxed mb-3">
-                      {r.desc}
-                    </p>
-                    {r.url && (
-                      <a
-                        href={r.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[10px] text-gold/70 hover:text-gold transition-colors font-semibold uppercase tracking-wider"
-                      >
-                        <ExternalLink className="w-3 h-3" /> Visit
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <div className="lg:hidden max-w-xl mx-auto">
+        <BranchList />
+      </div>
+    </>
   );
 }

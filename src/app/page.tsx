@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import LogoCarousel from "@/components/LogoCarousel";
 import HeroMoneyPile from "@/components/HeroMoneyPile";
 import FinanceWheel from "@/components/FinanceWheel";
 import Image from "next/image";
+import { motion, useScroll, useTransform } from "framer-motion";
 import {
   ArrowRight,
   Trophy,
@@ -30,6 +31,10 @@ import { blogPosts } from "@/data/blogs";
 import ScrollReveal from "@/components/ScrollReveal";
 import RoadmapTimeline from "@/components/competitions/RoadmapTimeline";
 import AnimatedCounter from "@/components/AnimatedCounter";
+import HeroSpotlight from "@/components/HeroSpotlight";
+import RevealWords from "@/components/motion/RevealWords";
+import ParallaxLayer from "@/components/motion/ParallaxLayer";
+import ImpactStats from "@/components/ImpactStats";
 
 export default function HomePage() {
   const activeCompetitions = competitions.filter(
@@ -57,6 +62,16 @@ useEffect(() => {
   const [typedReal, setTypedReal] = useState(0);
   const [typedLine2, setTypedLine2] = useState(0);
   const [showRest, setShowRest] = useState(false);
+  // Swap the title colours once the rest of the hero has appeared.
+  const swapped = showRest;
+
+  // Hero reacts to scrolling away: background zooms + darkens, content drifts up.
+  const heroRef = useRef<HTMLElement | null>(null);
+  const { scrollYProgress: heroProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const heroBgScale = useTransform(heroProgress, [0, 1], [1, 1.12]);
+  const heroShade = useTransform(heroProgress, [0, 1], [0, 0.55]);
+  const heroContentY = useTransform(heroProgress, [0, 1], [0, -90]);
+  const cueOpacity = useTransform(heroProgress, [0, 0.06], [1, 0]);
 
   // Phase 1: Type "Finance Club"
 
@@ -91,8 +106,9 @@ useEffect(() => {
       <div>
         {/* ===== HERO — FULL SCREEN IMAGE ===== */}
         {/* ===== HERO — FULL SCREEN IMAGE ===== */}
-<section className="relative min-h-0 lg:min-h-screen w-full flex items-start overflow-hidden">  {/* Background Image Container */}
-  <div className="absolute inset-0 w-full h-full">
+<section ref={heroRef} className="relative min-h-0 lg:min-h-screen w-full flex items-start overflow-hidden">  {/* Background Image Container */}
+  {/* Background zooms in slightly and darkens as you scroll past the hero */}
+  <motion.div className="absolute inset-0 w-full h-full" style={{ scale: heroBgScale }}>
     <Image
       src="/Finance-Club/bg1.png"
       alt="Finance Club IIT Bombay"
@@ -113,9 +129,29 @@ useEffect(() => {
     />
     <div className="accent-orb-gold top-[10%] right-[5%] z-[2]" />
     <div className="accent-orb-crimson bottom-[15%] left-[5%] z-[2]" style={{ animationDelay: "1.5s" }} />
-  </div>
+  </motion.div>
+  <motion.div aria-hidden className="absolute inset-0 z-[3] bg-[#0D0A0A] pointer-events-none" style={{ opacity: heroShade }} />
+  <HeroSpotlight />
+
+  {/* Scroll cue — large screens only, fades out as soon as you scroll */}
+  <motion.div
+    aria-hidden
+    className="hidden lg:flex absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex-col items-center gap-2 pointer-events-none"
+    style={{ opacity: cueOpacity }}
+  >
+    <span className="text-[10px] uppercase tracking-[0.35em] text-cream/50">Scroll</span>
+    <span className="relative block w-px h-12 bg-gradient-to-b from-gold/50 to-transparent overflow-hidden">
+      <motion.span
+        className="absolute left-1/2 -translate-x-1/2 w-[3px] h-[3px] rounded-full bg-gold-light shadow-[0_0_8px_rgba(253,216,93,0.9)]"
+        initial={{ top: "-10%" }}
+        animate={{ top: ["-10%", "100%"] }}
+        transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut", repeatDelay: 0.3 }}
+      />
+    </span>
+  </motion.div>
 
   {/* Content Layer */}
+  <motion.div style={{ y: heroContentY }} className="relative z-10 w-full">
   <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 w-full pt-24 sm:pt-32 pb-10 lg:pb-16 xl:-translate-x-10">
     {/* Badge */}
 <div className="badge-pill badge-gold mb-5 sm:mb-8 text-xs sm:text-sm lg:text-base px-3 py-1 sm:px-3.5 sm:py-1.5 lg:px-4 whitespace-nowrap">
@@ -132,16 +168,67 @@ useEffect(() => {
 }}
     >
           <span 
-  className="inline-block w-full min-h-[2.4em] sm:min-h-[1.2em] align-top"
+  className="relative inline-block w-full min-h-[2.4em] sm:min-h-[1.2em] align-top"
 >
-                    <span className="text-gradient-gold" style={{ willChange: "contents" }}>
-              {REAL.slice(0, Math.min(typedReal, REAL_SPLIT))}
-            </span>
-        <span className="text-cream">
-          {REAL.slice(REAL_SPLIT, typedReal)}
+        {/* While typing: "Finance" gold, "Club" cream. Once the rest of the
+            hero appears they cross-fade: "Finance" cream, "Club" gold. */}
+        <span className="relative inline-block">
+          <span
+            className="text-gradient-gold transition-opacity duration-[1400ms] ease-out"
+            style={{ opacity: swapped ? 0 : 1 }}
+          >
+            {REAL.slice(0, Math.min(typedReal, REAL_SPLIT))}
+          </span>
+          <span
+            aria-hidden
+            className="absolute left-0 top-0 text-cream transition-opacity duration-[1400ms] ease-out"
+            style={{ opacity: swapped ? 1 : 0 }}
+          >
+            {REAL.slice(0, Math.min(typedReal, REAL_SPLIT))}
+          </span>
+        </span>
+        {typedReal > REAL_SPLIT ? " " : ""}
+        <span className="relative inline-block">
+          <span
+            className="text-cream transition-opacity duration-[1400ms] ease-out"
+            style={{ opacity: swapped ? 0 : 1 }}
+          >
+            {REAL.slice(REAL_SPLIT + 1, typedReal)}
+          </span>
+          <span
+            aria-hidden
+            className="absolute left-0 top-0 text-gradient-gold transition-opacity duration-[1400ms] ease-out"
+            style={{ opacity: swapped ? 1 : 0 }}
+          >
+            {REAL.slice(REAL_SPLIT + 1, typedReal)}
+          </span>
         </span>
         {!line1Done && (
           <span className="inline-block w-[4px] h-[0.85em] bg-gold ml-1 align-middle animate-[blink_0.9s_steps(1)_infinite]" />
+        )}
+        {/* One-time glint across the title as the colours swap (overlay
+            only — no layout change). Styled inline so it never depends on
+            the global stylesheet. */}
+        {swapped && (
+          <motion.span
+            aria-hidden
+            className="absolute left-0 top-0 w-full pointer-events-none"
+            style={{
+              color: "transparent",
+              WebkitTextFillColor: "transparent",
+              backgroundImage:
+                "linear-gradient(110deg, transparent 42%, rgba(255,246,214,0.95) 50%, transparent 58%)",
+              backgroundSize: "250% 100%",
+              backgroundRepeat: "no-repeat",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+            }}
+            initial={{ backgroundPosition: "150% 0%" }}
+            animate={{ backgroundPosition: "-50% 0%" }}
+            transition={{ duration: 1.6, ease: [0.45, 0, 0.25, 1], delay: 0.2 }}
+          >
+            {REAL}
+          </motion.span>
         )}
       </span>
 
@@ -182,13 +269,13 @@ useEffect(() => {
             { value: "15+", label: "Events Annually" },
             { value: "2000+", label: "Registrations" },
             { value: "8+", label: "Industry Partners" },
-          ].map((stat) => (
+          ].map((stat, i) => (
             <div key={stat.label} className="text-center px-1.5 sm:px-4">
               <div
                 className="text-2xl sm:text-3xl font-extrabold text-gold mb-0.5"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                <AnimatedCounter value={stat.value} />
+                <AnimatedCounter value={stat.value} start={showRest} delay={250 + i * 120} />
               </div>
               <div className="text-[9px] sm:text-xs text-cream/50 uppercase tracking-wider font-medium">{stat.label}</div>
             </div>
@@ -209,6 +296,7 @@ useEffect(() => {
       </div>
     </div>
   </div>
+  </motion.div>
 </section>
         {/* ===== WHAT WE DO — WHEEL ===== */}
         <section className="py-10 px-6 lg:px-8 relative mesh-gold overflow-hidden">
@@ -224,13 +312,13 @@ useEffect(() => {
                   className="text-4xl sm:text-4xl lg:text-5xl font-extrabold tracking-[0.02em]"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
-                  Building{" "}
-                  <span className="text-gradient-gold">Finance Acumen</span>
+                  <RevealWords text="Building" />{" "}
+                  <RevealWords text="Finance Acumen" className="text-gradient-gold" delay={0.07} />
                 </h2>
                 <p className="text-cream/35 mt-5 text-lg sm:text-xl lg:text-2xl lg:leading-relaxed max-w-4xl mx-auto text-center sm:text-center">
                   From flagship competitions to published research - structured
                   pathways across every major finance discipline.{" "}
-                  <span className="hidden sm:inline">Hover over</span>
+                  <span className="hidden sm:inline">Click</span>
                   <span className="sm:hidden">Tap</span> any sector to explore
                   what it covers.
                 </p>
@@ -243,23 +331,25 @@ useEffect(() => {
             </ScrollReveal>
           </div>
         </section>
-         <section className="py-10 px-6 lg:px-8 relative mesh-gold overflow-hidden">
+         <section className="py-10 px-4 sm:px-6 lg:px-8 relative mesh-gold overflow-x-clip">
 
 
           {/* ===== IMPACT / SCALE ===== */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 mt-12">
+          <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 mb-12 mt-6 sm:mt-12">
             <div className="relative overflow-hidden rounded-3xl border border-cream/10">
+              <ParallaxLayer>
               <Image
-                src="/Finance-Club/art5.JPG"
-                alt=""
-                fill
-                className="object-cover opacity-[0.8] pointer-events-none select-none"
-                sizes="(max-width: 1024px) 100vw, 1200px"
-              />
+                  src="/Finance-Club/art5.JPG"
+                  alt=""
+                  fill
+                  className="object-cover opacity-[0.8] pointer-events-none select-none"
+                  sizes="(max-width: 1024px) 100vw, 1200px"
+                />
+              </ParallaxLayer>
               <div className="absolute inset-0 bg-gradient-to-br from-[#141010]/90 via-[#141010]/85 to-[#141010]/95 pointer-events-none" />
 
               <ScrollReveal>
-                <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center pt-12 pb-12 px-6 sm:px-12">
+                <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center py-10 sm:py-12 px-5 sm:px-12">
                   <div>
                     <div className="badge-pill badge-gold mb-6">
                       <Zap className="w-3 h-3" />
@@ -269,7 +359,8 @@ useEffect(() => {
                       className="text-4xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight"
                       style={{ fontFamily: "var(--font-display)" }}
                     >
-                      Scale That <span className="text-gradient-gold">Matters</span>
+                      <RevealWords text="Scale That" />{" "}
+                      <RevealWords text="Matters" className="text-gradient-gold" delay={0.14} />
                     </h2>
                     <p className="text-cream/60 mt-5 text-base sm:text-xl lg:text-2xl lg:leading-relaxed max-w-md">
                       Year after year, our events and initiatives reach hundreds of
@@ -277,25 +368,7 @@ useEffect(() => {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    {[
-                      { value: "15+", label: "Events Annually", icon: Calendar, glow: "card-glow-gold" },
-                      { value: "2000+", label: "Registrations", icon: Users, glow: "card-glow-crimson" },
-                      { value: "8+", label: "Industry Partners", icon: Building2, glow: "card-glow-gold" },
-                      { value: "20+", label: "Sessions and Workshops", icon: TrendingUp, glow: "card-glow-crimson" },
-                    ].map((stat) => (
-                      <div key={stat.label} className={`${stat.glow} p-6 text-center`}>
-                        <stat.icon className="w-6 h-6 text-gold/60 mx-auto mb-3" />
-                        <div
-                          className="text-2xl lg:text-3xl font-extrabold text-cream mb-1"
-                          style={{ fontFamily: "var(--font-display)" }}
-                        >
-                          <AnimatedCounter value={stat.value} />
-                        </div>
-                        <div className="text-xs lg:text-lg text-cream/60">{stat.label}</div>
-                      </div>
-                    ))}
-                  </div>
+                  <ImpactStats />
                 </div>
               </ScrollReveal>
             </div>
@@ -303,42 +376,31 @@ useEffect(() => {
         
 
           {/* ===== FEATURED COMPETITIONS — ROADMAP ===== */}
-<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Pinned on desktop: page scroll drives the road. Winding vertical road on phones. */}
+          <RoadmapTimeline
+            intro={
     <div className="lg:col-span-4">
         <div className="badge-pill badge-gold mb-6">Competitions</div>
         <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-4 tracking-[0.02em] leading-[1.35]" style={{ fontFamily: "var(--font-display)" }}>
-          Compete Against the <span className="text-gradient-gold">Best Minds</span>
+          <RevealWords text="Compete Against the" />{" "}
+          <RevealWords text="Best Minds" className="text-gradient-gold" delay={0.21} />
         </h2>
         <p className="text-cream/35 mb-6 text-xl">
           Our flagship competitions create a structured pathway into finance throughout the academic year.
         </p>
-        <Link href="/competitions" className="btn-crimson inline-flex items-center gap-2">
-          View All Competitions
+        <Link href="/competitions" className="btn-gold">
+          View All Competitions <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
-
-      <div className="lg:col-span-8">
-        <div className="card-premium p-4 sm:p-6 rounded-2xl border border-cream/10">
-          <div className="relative">
-            <ScrollReveal>
-              {/* Height is dynamic (auto) on mobile, fixed on desktop */}
-              <div className="h-auto md:h-[420px] lg:h-[520px]">
-                <RoadmapTimeline />
-              </div>
-            </ScrollReveal>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+            }
+          />
           </section>
 
           <div className="divider-glow" />
 
           {/* ===== PARTNERS HIGHLIGHT ===== */}
-          <section className="relative py-32 px-6 lg:px-8 overflow-hidden">
-            <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-0">
+          <section className="relative py-16 sm:py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
+            <ParallaxLayer className="grid grid-cols-2 grid-rows-2 gap-0">
               <div className="relative col-span-1 row-span-2">
                 <Image src="/Finance-Club/partner_3.jpeg" alt="" fill className="object-cover" sizes="50vw" />
               </div>
@@ -348,17 +410,17 @@ useEffect(() => {
               <div className="relative col-span-1 row-span-1">
                 <Image src="/Finance-Club/publi.jpg" alt="" fill className="object-cover" sizes="50vw" />
               </div>
-            </div>
+            </ParallaxLayer>
 
             <div className="absolute inset-0 bg-black/82" />
             <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(circle_at_top_left,rgba(245,183,49,0.12),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(27,107,64,0.14),transparent_28%)]" />
 
             <div className="relative z-10 max-w-[1300px] mx-auto">
               <ScrollReveal>
-                <div className="backdrop-blur-md bg-black/50 border border-cream/10 rounded-3xl px-8 py-10 sm:px-12 sm:py-14">
-                  <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-14">
+                <div className="backdrop-blur-md bg-black/50 border border-cream/10 rounded-3xl px-5 py-8 sm:px-12 sm:py-14">
+                  <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-10 sm:mb-14">
                     <div>
-                      <div className="badge-pill badge-cream mb-6">
+                      <div className="badge-pill badge-gold mb-6">
                         <Building2 className="w-3 h-3" />
                         Our Partners
                       </div>
@@ -366,8 +428,8 @@ useEffect(() => {
                         className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight"
                         style={{ fontFamily: "var(--font-display)" }}
                       >
-                        Industry{" "}
-                        <span className="text-gradient-gold">Collaborators</span>
+                        <RevealWords text="Industry" />{" "}
+                        <RevealWords text="Collaborators" className="text-gradient-gold" delay={0.07} />
                       </h2>
                     </div>
                     <Link href="/sponsors" className="btn-gold shrink-0">
@@ -382,8 +444,8 @@ useEffect(() => {
           </section>
 
           {/* ===== LATEST BLOGS ===== */}
-          <section className="relative py-16 px-6 lg:px-8 overflow-hidden">
-            <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-0">
+          <section className="relative py-16 px-4 sm:px-6 lg:px-8 overflow-hidden">
+            <ParallaxLayer className="grid grid-cols-2 grid-rows-2 gap-0">
               <div className="relative col-span-1 row-span-2">
                 <Image src="/Finance-Club/publi.jpg" alt="" fill className="object-cover" sizes="50vw" />
               </div>
@@ -393,31 +455,30 @@ useEffect(() => {
               <div className="relative col-span-1 row-span-1">
                 <Image src="/Finance-Club/partner_3.jpeg" alt="" fill className="object-cover" sizes="50vw" />
               </div>
-            </div>
+            </ParallaxLayer>
 
             <div className="absolute inset-0 bg-black/82" />
             <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(circle_at_top_left,rgba(27,107,64,0.14),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(245,183,49,0.12),transparent_28%)]" />
 
             <div className="relative z-10 max-w-[1300px] mx-auto">
               <ScrollReveal>
-                <div className="backdrop-blur-md bg-black/50 border border-cream/10 rounded-3xl px-8 py-10 sm:px-12 sm:py-14">
-                  <div className="flex items-end justify-between mb-14">
+                <div className="backdrop-blur-md bg-black/50 border border-cream/10 rounded-3xl px-5 py-8 sm:px-12 sm:py-14">
+                  <div className="flex items-end justify-between mb-8 sm:mb-14">
                     <div>
-                      <div className="badge-pill badge-crimson mb-6">Insights</div>
+                      <div className="badge-pill badge-gold mb-6">Insights</div>
                       <h2
                         className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight"
                         style={{ fontFamily: "var(--font-display)" }}
                       >
-                        Latest from the{" "}
-                        <span className="text-gradient-crimson">Blog</span>
+                        <RevealWords text="Latest from the" />{" "}
+                        <RevealWords text="Blog" className="text-gradient-gold" delay={0.21} />
                       </h2>
                     </div>
-                    <Link
-                      href="/blogs"
-                      className="hidden sm:flex btn-ghost text-sm py-2.5 px-5"
-                    >
-                      All Posts <ChevronRight className="w-4 h-4" />
-                    </Link>
+                    <div className="hidden sm:block">
+                      <Link href="/blogs" className="btn-ghost text-sm">
+                        All Posts <ChevronRight className="w-4 h-4" />
+                      </Link>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -425,8 +486,8 @@ useEffect(() => {
                       <Link key={post.id} href={`/blogs/${post.slug}`}>
                         <div
                           className={`${
-                            i === 0 ? "card-glow-crimson" : "card-premium"
-                          } p-7 group h-full`}
+                            i === 0 ? "card-glow-gold" : "card-premium"
+                          } p-6 sm:p-7 group h-full`}
                         >
                           <div className="text-[10px] text-cream/20 mb-3 font-medium uppercase tracking-wider">
                             {new Date(post.date).toLocaleDateString("en-IN", {
@@ -452,6 +513,11 @@ useEffect(() => {
                       </Link>
                     ))}
                   </div>
+                  <div className="sm:hidden mt-6">
+                    <Link href="/blogs" className="btn-ghost w-full text-sm">
+                      All Posts <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
                 </div>
               </ScrollReveal>
             </div>
@@ -460,19 +526,21 @@ useEffect(() => {
           <div className="divider" />
 
         {/* ===== CTA ===== */}
-        <section className="py-32 px-6 lg:px-8 mesh-crimson grain relative">
+        <section className="py-20 sm:py-32 px-4 sm:px-6 lg:px-8 mesh-crimson grain relative">
           <div className="accent-orb-gold top-0 left-1/4" />
           <div className="accent-orb-crimson bottom-0 right-1/4" />
           <div className="relative z-10 max-w-3xl mx-auto text-center">
             <ScrollReveal>
-              <div className="gradient-border relative overflow-hidden p-10 sm:p-16 bg-[#0D0A0A]">
+              <div className="gradient-border relative overflow-hidden px-6 py-10 sm:p-16 bg-[#0D0A0A]">
+                <ParallaxLayer>
                 <Image
-                  src="/Finance-Club/art2.JPG"
-                  alt=""
-                  fill
-                  className="object-cover opacity-[0.08] pointer-events-none select-none"
-                  sizes="(max-width: 1024px) 100vw, 800px"
-                />
+                    src="/Finance-Club/art2.JPG"
+                    alt=""
+                    fill
+                    className="object-cover opacity-[0.08] pointer-events-none select-none"
+                    sizes="(max-width: 1024px) 100vw, 800px"
+                  />
+                </ParallaxLayer>
                 <div className="absolute inset-0 bg-[#0D0A0A]/85 pointer-events-none" />
                 <div className="relative z-10 text-center">
                   <div className="badge-pill badge-gold mx-auto mb-6">
@@ -482,8 +550,8 @@ useEffect(() => {
                     className="text-4xl sm:text-5xl lg:text-5xl font-extrabold tracking-tight mb-5"
                     style={{ fontFamily: "var(--font-display)" }}
                   >
-                    Ready to{" "}
-                    <span className="text-gradient-gold">Level Up</span>?
+                    <RevealWords text="Ready to" />{" "}
+                    <RevealWords text="Level Up?" className="text-gradient-gold" delay={0.14} />
                   </h2>
                   <p className="text-cream/50 max-w-3xl mx-auto mb-10 leading-relaxed text-lg lg:text-xl">
                     Compete in flagship events, access curated resources and be
@@ -493,7 +561,7 @@ useEffect(() => {
                     <Link href="/competitions" className="btn-gold">
                       <Trophy className="w-4 h-4" /> Competitions
                     </Link>
-                    <Link href="/team" className="btn-crimson">
+                    <Link href="/team" className="btn-ghost">
                       Meet the Team
                     </Link>
                   </div>

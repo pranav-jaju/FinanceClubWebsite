@@ -18,6 +18,8 @@ import {
 import { sponsors } from "@/data/sponsors";
 import SponsorCarousel from "@/components/SponsorCarousel";
 import ScrollReveal from "@/components/ScrollReveal";
+import RevealWords from "@/components/motion/RevealWords";
+import { StaggerGrid, StaggerItem } from "@/components/StaggerReveal";
 
 export default function PartnersPage() {
   const [formState, setFormState] = useState<"idle" | "sending" | "sent">("idle");
@@ -149,7 +151,7 @@ export default function PartnersPage() {
         </div> */}
         <div className="relative z-10 max-w-4xl mx-auto">
   <ScrollReveal>
-    <div className="backdrop-blur-md bg-black/40 border border-cream/10 rounded-3xl px-8 py-10 sm:px-10 sm:py-12">
+    <div className="hero-shine backdrop-blur-md bg-black/40 border border-cream/10 rounded-3xl px-8 py-10 sm:px-10 sm:py-12">
       <div className="badge-pill badge-gold mb-6">
         <Handshake className="w-3 h-3" /> Partnerships
       </div>
@@ -193,41 +195,48 @@ export default function PartnersPage() {
         <div className="max-w-6xl mx-auto">
           <ScrollReveal>
             <div className="text-center mb-14">
-              <div className="badge-pill badge-cream mx-auto mb-6">
+              <div className="badge-pill badge-gold mx-auto mb-6">
                 Why Partner
               </div>
               <h2
                 className="text-5xl sm:text-5xl font-extrabold tracking-tight"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                The{" "}
-                <span className="text-gradient-gold">
-                  Value Proposition
-                </span>
+                <RevealWords text="The" />
+                {" "}
+                <RevealWords text="Value Proposition" className="text-gradient-gold" delay={0.07} />
+                {" "}
               </h2>
             </div>
           </ScrollReveal>
 
-          <ScrollReveal delay={200}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {valueProps.map((item) => (
-                <div key={item.title} className="card-glow-gold p-8 group">
-                  <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center mb-5 group-hover:bg-gold/15 transition-colors">
-                    <item.icon className="w-6 h-6 text-gold group-hover:scale-110 transition-transform" />
+          <StaggerGrid className="grid grid-cols-1 sm:grid-cols-2 gap-6" stagger={0.14}>
+            {valueProps.map((item, i) => (
+              <StaggerItem key={item.title} className="h-full" from={i % 2 === 0 ? "left" : "right"}>
+                <div className="card-glow-gold h-full p-8 group relative overflow-hidden">
+                  {/* soft glow that blooms in the corner on hover */}
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute -top-20 -right-20 w-56 h-56 rounded-full bg-gold/10 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  />
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-xl bg-gold/10 border border-gold/20 flex items-center justify-center mb-5 group-hover:bg-gold group-hover:border-gold transition-colors duration-300">
+                      <item.icon className="w-6 h-6 text-gold group-hover:text-[#0D0A0A] group-hover:scale-110 transition-all duration-300" />
+                    </div>
+                    <h3
+                      className="font-bold text-xl mb-2 text-cream group-hover:text-gold transition-colors"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      {item.title}
+                    </h3>
+                    <p className="text-lg text-cream/60 leading-relaxed">
+                      {item.desc}
+                    </p>
                   </div>
-                  <h3
-                    className="font-bold text-xl mb-2 text-cream"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    {item.title}
-                  </h3>
-                  <p className="text-lg text-cream/60 leading-relaxed">
-                    {item.desc}
-                  </p>
                 </div>
-              ))}
-            </div>
-          </ScrollReveal>
+              </StaggerItem>
+            ))}
+          </StaggerGrid>
         </div>
       </section>
 
@@ -248,7 +257,7 @@ export default function PartnersPage() {
   <div className="max-w-5xl mx-auto relative z-10">
     <ScrollReveal>
       <div className="text-center mb-14">
-        <div className="badge-pill badge-crimson mx-auto mb-6">
+        <div className="badge-pill badge-gold mx-auto mb-6">
           <Building2 className="w-3 h-3" />
           Track Record
         </div>
@@ -256,8 +265,10 @@ export default function PartnersPage() {
           className="text-5xl sm:text-5xl font-extrabold tracking-tight"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          Past{" "}
-          <span className="text-gradient-crimson">Collaborations</span>
+          <RevealWords text="Past" />
+          {" "}
+          <RevealWords text="Collaborations" className="text-gradient-gold" delay={0.07} />
+          {" "}
         </h2>
         <p className="text-2xl text-cream/55 mt-4 max-w-xl mx-auto">
           Leading financial institutions that have partnered with
@@ -285,7 +296,10 @@ export default function PartnersPage() {
                 className="text-5xl sm:text-5xl font-extrabold tracking-tight"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                Events in <span className="text-gradient-gold">Action</span>
+                <RevealWords text="Events in" />
+                {" "}
+                <RevealWords text="Action" className="text-gradient-gold" delay={0.14} />
+                {" "}
               </h2>
             </div>
           </ScrollReveal>
@@ -318,7 +332,7 @@ export default function PartnersPage() {
                   sizes="(max-width: 768px) 100vw, 50vw"
                 />
                 <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent rounded-b-xl">
-                  <div className="badge-pill badge-crimson text-[10px] mb-2">
+                  <div className="badge-pill badge-gold text-[10px] mb-2">
                     Industry Sessions
                   </div>
                   <p className="text-lg text-cream/70">
@@ -354,7 +368,10 @@ export default function PartnersPage() {
                   className="text-5xl font-extrabold mb-3"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
-                  Get in <span className="text-gradient-gold">Touch</span>
+                  <RevealWords text="Get in" />
+                  {" "}
+                  <RevealWords text="Touch" className="text-gradient-gold" delay={0.14} />
+                  {" "}
                 </h2>
                 <p className="text-cream/70 max-w-md mx-auto text-xl">
                   Interested in partnering with us? Fill out the form below and

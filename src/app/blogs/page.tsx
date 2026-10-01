@@ -72,7 +72,7 @@ export default function BlogsPage() {
 
             {/* Typewriter Title */}
             <h1
-              className="text-5xl sm:text-8xl lg:text-6xl font-extrabold tracking-[0.03em] leading-tight mb-6"
+              className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-[0.03em] leading-tight mb-6"
               style={{ fontFamily: "var(--font-display)" }}
             >
               <span className="text-gradient-gold">
@@ -109,7 +109,7 @@ export default function BlogsPage() {
             >
               <div
                 className={`${
-                  i === 0 ? "card-glow-crimson" : "card-premium"
+                  i === 0 ? "card-glow-gold" : "card-premium"
                 } p-7 sm:p-8 group`}
               >
                 {/* Latest badge */}

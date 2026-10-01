@@ -8,7 +8,7 @@ export default function ManagerCard({ member, compact = false }: { member: typeo
   const photoSrc = member.photo.startsWith("/") ? member.photo : `/${member.photo.trim()}`;
 const sizeClass = compact
     ? "w-full h-full"
-    : "w-[58vw] max-w-[300px] aspect-[300/380] sm:w-[300px] sm:h-[380px] sm:aspect-auto";
+    : "w-[72vw] max-w-[300px] aspect-[300/380] sm:w-[300px] sm:h-[380px] sm:aspect-auto";
   return (
     <div className={`relative ${sizeClass} rounded-2xl overflow-hidden group border border-gold/20`}>
       <Image
