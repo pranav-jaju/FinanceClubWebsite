@@ -23,6 +23,7 @@ export interface Competition {
 
   maxTeamSize: number;
 
+  /** Banner/poster under /public (prefixed /Finance-Club), or "" if none yet. */
   image: string;
 
   partnerLogo?: string;
@@ -64,7 +65,7 @@ export const competitions: Competition[] = [
 
     maxTeamSize: 4,
 
-    image: "/competitions/portfolio.jpg",
+    image: "/Finance-Club/PMC.png",
 
     partnerName: "FPA Academy",
   },
@@ -104,7 +105,7 @@ export const competitions: Competition[] = [
 
     maxTeamSize: 4,
 
-    image: "/competitions/finsearch.jpg",
+    image: "/Finance-Club/Finsearch.png",
   },
 
   {
@@ -142,7 +143,7 @@ export const competitions: Competition[] = [
 
     maxTeamSize: 3,
 
-    image: "/competitions/erc.jpg",
+    image: "/Finance-Club/EquityResearchCompetition.png",
   },
   {
     id: "ibcc-2027",
@@ -178,7 +179,7 @@ export const competitions: Competition[] = [
 
     maxTeamSize: 4,
 
-    image: "/competitions/ibcc.jpg",
+    image: "",
   },
 
   {
@@ -215,7 +216,7 @@ export const competitions: Competition[] = [
 
     maxTeamSize: 1,
 
-    image: "/competitions/quiz.jpg",
+    image: "",
 
     partnerLogo: "/Finance-Club/cfa_institute.png",
 
@@ -249,6 +250,6 @@ export const competitions: Competition[] = [
 
     maxTeamSize: 1,
 
-    image: "/competitions/quiz.jpg",
+    image: "",
   },
 ];
